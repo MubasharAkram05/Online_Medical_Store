@@ -1,0 +1,13 @@
+.table-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+  .table-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+

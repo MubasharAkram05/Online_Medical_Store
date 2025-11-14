@@ -1,0 +1,72 @@
+.prescription-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+}
+
+.upload-dropzone {
+  border: 2px dashed #4f46e5;
+  border-radius: 16px;
+  padding: 40px;
+  text-align: center;
+  background: linear-gradient(130deg, rgba(99, 102, 241, 0.12), rgba(129, 140, 248, 0.05));
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.upload-dropzone:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(99, 102, 241, 0.15);
+}
+
+.dropzone-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.upload-dropzone span {
+  color: #4338ca;
+  font-weight: 600;
+}
+
+.upload-dropzone small {
+  display: block;
+  margin-top: 0.5rem;
+  color: #64748b;
+}
+
+.selected-file {
+  margin-top: 1rem;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.prescription-upload .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.prescription-upload label {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.prescription-upload textarea {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem;
+  font-size: 0.95rem;
+  resize: vertical;
+}
+
+.prescription-upload textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
+}
+

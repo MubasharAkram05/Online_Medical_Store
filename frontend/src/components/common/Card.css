@@ -1,0 +1,18 @@
+.card {
+  background: var(--bg-white);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+}
+
+.card-clickable {
+  cursor: pointer;
+}
+

@@ -1,0 +1,133 @@
+.profile-page {
+  padding: 2.5rem 0 4rem;
+  background-color: #f5f7fb;
+  min-height: calc(100vh - 120px);
+}
+
+.profile-page .container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2.5rem;
+}
+
+.page-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.page-header p {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.profile-badge {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: #fff;
+  box-shadow: 0 10px 25px rgba(79, 70, 229, 0.25);
+}
+
+.profile-grid {
+  display: grid;
+  gap: 1.75rem;
+}
+
+.profile-card {
+  padding: 2rem;
+  border-radius: 18px;
+  box-shadow: 0 15px 40px rgba(15, 23, 42, 0.08);
+  border: none;
+}
+
+.profile-card h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.profile-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.profile-form label {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.profile-form input {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.profile-form input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+.profile-form input.error {
+  border-color: #ef4444;
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 0.85rem;
+}
+
+.loading-state {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2.5rem;
+  text-align: center;
+  font-weight: 600;
+  color: #475569;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+@media (min-width: 900px) {
+  .profile-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .profile-badge {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
+}
+

@@ -1,0 +1,162 @@
+import { getPool } from '../config/database.js';
+import { getPaymentByOrderId } from './payment.model.js';
+
+export const createOrder = async (connection, orderData) => {
+  const [result] = await connection.query(
+    `INSERT INTO orders
+      (user_id, order_number, status, payment_method, subtotal_amount, tax_amount,
+       shipping_fee, total_amount, prescription_verified, full_name, email, phone,
+       address, city, postal_code)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      orderData.userId,
+      orderData.orderNumber,
+      orderData.status || 'pending',
+      orderData.paymentMethod,
+      orderData.subtotal,
+      orderData.tax,
+      orderData.shipping,
+      orderData.total,
+      orderData.prescriptionVerified ? 1 : 0,
+      orderData.fullName,
+      orderData.email,
+      orderData.phone,
+      orderData.address,
+      orderData.city,
+      orderData.postalCode
+    ]
+  );
+
+  return result.insertId;
+};
+
+export const createOrderItems = async (connection, orderId, items) => {
+  const values = items.map((item) => [
+    orderId,
+    item.medicineId,
+    item.quantity,
+    item.unitPrice,
+    item.totalPrice
+  ]);
+
+  await connection.query(
+    `INSERT INTO order_items
+      (order_id, medicine_id, quantity, unit_price, total_price)
+     VALUES ?`,
+    [values]
+  );
+};
+
+export const getOrdersByUser = async (userId) => {
+  const [rows] = await getPool().query(
+    `SELECT o.*,
+            (
+              SELECT status
+              FROM payments
+              WHERE order_id = o.id
+              ORDER BY created_at DESC
+              LIMIT 1
+            ) AS payment_status
+     FROM orders o
+     WHERE o.user_id = ?
+     ORDER BY o.created_at DESC`,
+    [userId]
+  );
+
+  return rows;
+};
+
+export const getOrderWithItems = async (userId, orderId) => {
+  const [orders] = await getPool().query(
+    `SELECT *
+     FROM orders
+     WHERE id = ? AND user_id = ?`,
+    [orderId, userId]
+  );
+
+  const order = orders[0];
+  if (!order) return null;
+
+  const [items] = await getPool().query(
+    `SELECT oi.*, m.name, m.image_url, m.requires_prescription
+     FROM order_items oi
+     INNER JOIN medicines m ON m.id = oi.medicine_id
+     WHERE oi.order_id = ?`,
+    [orderId]
+  );
+
+  const payment = await getPaymentByOrderId(orderId);
+
+  return { order, items, payment };
+};
+
+export const getOrderWithItemsAdmin = async (orderId) => {
+  const [orders] = await getPool().query(
+    `SELECT o.*, u.name AS customer_name, u.email AS customer_email, u.phone AS customer_phone
+     FROM orders o
+     INNER JOIN users u ON u.id = o.user_id
+     WHERE o.id = ?`,
+    [orderId]
+  );
+
+  const order = orders[0];
+  if (!order) return null;
+
+  const [items] = await getPool().query(
+    `SELECT oi.*, m.name, m.image_url, m.requires_prescription
+     FROM order_items oi
+     INNER JOIN medicines m ON m.id = oi.medicine_id
+     WHERE oi.order_id = ?`,
+    [orderId]
+  );
+
+  const payment = await getPaymentByOrderId(orderId);
+
+  return { order, items, payment };
+};
+
+export const getAllOrders = async () => {
+  const [rows] = await getPool().query(
+    `SELECT o.*,
+            u.name AS customer_name,
+            u.email AS customer_email,
+            u.phone AS customer_phone,
+            (
+              SELECT status
+              FROM payments
+              WHERE order_id = o.id
+              ORDER BY created_at DESC
+              LIMIT 1
+            ) AS payment_status
+     FROM orders o
+     INNER JOIN users u ON u.id = o.user_id
+     ORDER BY o.created_at DESC`
+  );
+
+  return rows;
+};
+
+export const updateOrderStatus = async (orderId, status) => {
+  await getPool().query(
+    `UPDATE orders
+     SET status = ?, updated_at = NOW()
+     WHERE id = ?`,
+    [status, orderId]
+  );
+};
+
+export const getSalesReport = async ({ days = 7 }) => {
+  const [rows] = await getPool().query(
+    `SELECT DATE(created_at) AS date,
+            COUNT(*) AS orders,
+            SUM(total_amount) AS revenue
+     FROM orders
+     WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     GROUP BY DATE(created_at)
+     ORDER BY DATE(created_at) ASC`,
+    [days]
+  );
+
+  return rows;
+};
+

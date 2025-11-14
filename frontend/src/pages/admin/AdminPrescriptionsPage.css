@@ -1,0 +1,89 @@
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filters select {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.95rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-badge.status-pending {
+  background-color: rgba(249, 115, 22, 0.12);
+  color: #c2410c;
+}
+
+.status-badge.status-verified {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.status-badge.status-rejected {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.status-badge.status-expired {
+  background-color: rgba(148, 163, 184, 0.2);
+  color: #475569;
+}
+
+.table-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.table-actions select {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  border: 1px solid #6366f1;
+  color: #4f46e5;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.link-button:hover {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+}
+
+@media (max-width: 768px) {
+  .table-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+

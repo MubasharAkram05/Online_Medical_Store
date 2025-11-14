@@ -1,0 +1,143 @@
+.page-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.page-header p {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.prescription-list {
+  margin-top: 2.5rem;
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.list-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.loading-indicator {
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: #94a3b8;
+}
+
+.prescription-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr 1fr 1fr;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background-color: #f8fafc;
+}
+
+.table-header {
+  background-color: transparent;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.file-name {
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.file-meta {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-pending {
+  background-color: rgba(249, 115, 22, 0.12);
+  color: #c2410c;
+}
+
+.status-verified {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.status-rejected {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.status-expired {
+  background-color: rgba(148, 163, 184, 0.2);
+  color: #475569;
+}
+
+.notes-cell {
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.download-link {
+  color: #4f46e5;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.download-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .table-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
