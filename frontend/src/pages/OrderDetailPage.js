@@ -136,6 +136,9 @@ const OrderDetailPage = () => {
 
           <Card className="detail-card">
             <h2>Order Summary</h2>
+            <div className="priority-pill">
+              Priority: <span className={`priority-${order.priority || 'normal'}`}>{order.priority || 'normal'}</span>
+            </div>
             <div className="items-list">
               {order.items.map((item) => (
                 <div className="item-row" key={item.id}>

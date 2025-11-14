@@ -9,6 +9,7 @@ import {
   adminAdjustMedicineStock,
   adminListOrders,
   adminUpdateOrderStatus,
+  adminUpdateOrderDetails,
   adminListPrescriptions,
   adminUpdatePrescriptionStatus,
   adminSalesReport,
@@ -79,6 +80,45 @@ router.patch(
 );
 
 router.get('/orders', adminListOrders);
+router.patch(
+  '/orders/:id',
+  [
+    body('priority')
+      .optional()
+      .isIn(['normal', 'high', 'urgent'])
+      .withMessage('Invalid priority value'),
+    body('paymentStatus')
+      .optional()
+      .isIn(['pending', 'completed', 'failed', 'refunded'])
+      .withMessage('Invalid payment status'),
+    body('shippingAddress')
+      .optional()
+      .isLength({ min: 5 })
+      .withMessage('Shipping address must be at least 5 characters'),
+    body('city')
+      .optional()
+      .isLength({ min: 2 })
+      .withMessage('City must be at least 2 characters'),
+    body('postalCode')
+      .optional()
+      .isLength({ min: 3 })
+      .withMessage('Postal code must be at least 3 characters'),
+    body('items')
+      .optional()
+      .isArray({ min: 1 })
+      .withMessage('Items must be an array'),
+    body('items.*.id')
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage('Item id must be positive'),
+    body('items.*.quantity')
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage('Quantity must be at least 1')
+  ],
+  validateRequest,
+  adminUpdateOrderDetails
+);
 router.patch(
   '/orders/:id/status',
   [

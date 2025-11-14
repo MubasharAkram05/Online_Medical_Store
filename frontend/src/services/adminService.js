@@ -9,6 +9,7 @@ export const adminService = {
   adjustMedicineStock: (id, data) => api.patch(`/admin/medicines/${id}/stock`, data),
   getOrders: () => api.get('/admin/orders'),
   updateOrderStatus: (id, status) => api.patch(`/admin/orders/${id}/status`, { status }),
+  updateOrderDetails: (id, data) => api.patch(`/admin/orders/${id}`, data),
   getPrescriptions: (params) => api.get('/admin/prescriptions', { params }),
   updatePrescriptionStatus: (id, data) => api.patch(`/admin/prescriptions/${id}`, data),
   getSalesReport: (params) => api.get('/admin/reports/sales', { params }),

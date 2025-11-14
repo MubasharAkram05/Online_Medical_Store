@@ -48,7 +48,11 @@ const checkoutValidators = [
   body('payment.receiptUrl')
     .optional({ nullable: true })
     .isURL()
-    .withMessage('Receipt URL must be valid')
+    .withMessage('Receipt URL must be valid'),
+  body('priority')
+    .optional({ nullable: true })
+    .isIn(['normal', 'high', 'urgent'])
+    .withMessage('Invalid priority value')
 ];
 
 router.post('/checkout', authenticate, checkoutValidators, validateRequest, checkout);

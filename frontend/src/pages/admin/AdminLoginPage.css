@@ -61,6 +61,35 @@
   font-size: 0.95rem;
 }
 
+.admin-password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.admin-password-field input {
+  width: 100%;
+  padding-right: 4.5rem;
+}
+
+.admin-toggle-password {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: #4f46e5;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.35rem;
+}
+
+.admin-toggle-password:hover {
+  color: #312e81;
+}
+
 .admin-login-form input {
   border: 1px solid #e2e8f0;
   border-radius: 12px;

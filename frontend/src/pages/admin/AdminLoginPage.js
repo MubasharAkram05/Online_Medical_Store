@@ -9,6 +9,7 @@ import './AdminLoginPage.css';
 const AdminLoginPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
   const {
     register,
@@ -102,18 +103,27 @@ const AdminLoginPage = () => {
 
           <label>
             <span>Password</span>
-            <input
-              type="password"
-              placeholder="Enter password"
-              className={errors.password ? 'error' : ''}
-              {...register('password', {
-                required: 'Password is required',
-                minLength: {
-                  value: 6,
-                  message: 'Password must be at least 6 characters'
-                }
-              })}
-            />
+            <div className="admin-password-field">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter password"
+                className={errors.password ? 'error' : ''}
+                {...register('password', {
+                  required: 'Password is required',
+                  minLength: {
+                    value: 6,
+                    message: 'Password must be at least 6 characters'
+                  }
+                })}
+              />
+              <button
+                type="button"
+                className="admin-toggle-password"
+                onClick={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
             {errors.password && <span className="error-message">{errors.password.message}</span>}
           </label>
 

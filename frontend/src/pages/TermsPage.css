@@ -1,0 +1,124 @@
+.terms-page {
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 35%, #f8fbff 100%);
+  min-height: 80vh;
+  padding: 3rem 1.5rem 4rem;
+}
+
+.terms-hero {
+  max-width: 760px;
+  margin: 0 auto 2.5rem;
+  text-align: center;
+}
+
+.terms-hero h1 {
+  font-size: 2.5rem;
+  color: #0f172a;
+  margin-bottom: 0.75rem;
+}
+
+.terms-hero p {
+  color: #475569;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.terms-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.terms-sidebar {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+  position: sticky;
+  top: 100px;
+  align-self: start;
+}
+
+.terms-sidebar h3 {
+  margin-bottom: 1rem;
+  color: #0f172a;
+  font-size: 1.1rem;
+}
+
+.terms-sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.terms-sidebar a {
+  display: block;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  color: #0f8b7f;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.terms-sidebar a:hover {
+  background: rgba(15, 139, 127, 0.15);
+  color: #0b5c53;
+}
+
+.terms-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.terms-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.08);
+  border-left: 5px solid #0f8b7f;
+}
+
+.terms-card h2 {
+  margin: 0 0 0.6rem 0;
+  color: #0f172a;
+}
+
+.terms-summary {
+  color: #475569;
+  margin-bottom: 0.9rem;
+}
+
+.terms-card ul {
+  padding-left: 1.1rem;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.terms-card li + li {
+  margin-top: 0.35rem;
+}
+
+.terms-footer-note {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  color: #475569;
+  text-align: center;
+}
+
+@media (max-width: 960px) {
+  .terms-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .terms-sidebar {
+    position: static;
+    order: 2;
+  }
+}
+

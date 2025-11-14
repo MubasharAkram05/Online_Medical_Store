@@ -103,6 +103,24 @@
   color: #6366f1;
 }
 
+.order-priority {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.priority-normal {
+  color: #22c55e;
+}
+
+.priority-high {
+  color: #f97316;
+}
+
+.priority-urgent {
+  color: #ef4444;
+}
+
 .payment-method {
   font-size: 0.8rem;
   color: #94a3b8;

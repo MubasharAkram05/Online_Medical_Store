@@ -105,6 +105,9 @@ const OrdersPage = () => {
                     <div className="order-prescription">
                       {order.prescriptionVerified ? 'Prescription Verified' : 'Awaiting Verification'}
                     </div>
+                    <div className={`order-priority priority-${order.priority || 'normal'}`}>
+                      Priority: {order.priority || 'normal'}
+                    </div>
                   </div>
                   <div>
                     <span className={`status-badge status-${order.status}`}>{order.status}</span>

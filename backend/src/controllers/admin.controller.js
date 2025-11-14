@@ -14,7 +14,11 @@ import {
   getAllOrders,
   updateOrderStatus,
   getSalesReport,
-  getOrderWithItemsAdmin
+  getOrderWithItemsAdmin,
+  getOrderItemsForUpdate,
+  updateOrderItemQuantity,
+  updateOrderFields,
+  recalculateOrderTotals
 } from '../models/order.model.js';
 import {
   getAllPrescriptions,
@@ -34,6 +38,10 @@ import {
   updateSupplier,
   deleteSupplier
 } from '../models/supplier.model.js';
+import { updatePaymentStatusForOrder } from '../models/payment.model.js';
+
+const PRIORITY_OPTIONS = ['normal', 'high', 'urgent'];
+const PAYMENT_STATUS_OPTIONS = ['pending', 'completed', 'failed', 'refunded'];
 
 const formatMedicineResponse = (medicine) => ({
   id: medicine.id,
@@ -71,6 +79,36 @@ const parseInteractionNotes = (value) => {
     return [];
   }
 };
+
+const mapAdminOrderResponse = (order, items) => ({
+  id: order.id,
+  orderNumber: order.order_number,
+  status: order.status,
+  totalAmount: Number(order.total_amount),
+  subtotalAmount: Number(order.subtotal_amount),
+  taxAmount: Number(order.tax_amount),
+  shippingFee: Number(order.shipping_fee),
+  paymentMethod: order.payment_method,
+  paymentStatus: order.payment_status || (order.payment_method === 'cod' ? 'pending' : 'completed'),
+  prescriptionVerified: Boolean(order.prescription_verified),
+  customer: {
+    id: order.user_id,
+    name: order.customer_name,
+    email: order.customer_email,
+    phone: order.customer_phone
+  },
+  recipient: {
+    name: order.full_name,
+    email: order.email,
+    phone: order.phone
+  },
+  createdAt: order.created_at,
+  shippingAddress: order.address,
+  shippingCity: order.city,
+  shippingPostalCode: order.postal_code,
+  priority: order.priority || 'normal',
+  items
+});
 
 export const getAdminOverview = async (req, res, next) => {
   try {
@@ -278,26 +316,7 @@ export const adminListOrders = async (req, res, next) => {
           totalPrice: Number(item.total_price)
         }));
 
-        return {
-          id: order.id,
-          orderNumber: order.order_number,
-          status: order.status,
-          totalAmount: Number(order.total_amount),
-          paymentMethod: order.payment_method,
-          paymentStatus:
-            order.payment_status || (order.payment_method === 'cod' ? 'pending' : 'completed'),
-          prescriptionVerified: Boolean(order.prescription_verified),
-          customer: {
-            id: order.user_id,
-            name: order.customer_name,
-            email: order.customer_email,
-            phone: order.customer_phone
-          },
-          createdAt: order.created_at,
-          shippingAddress: order.address,
-          priority: order.priority || 'normal',
-          items
-        };
+        return mapAdminOrderResponse(order, items);
       })
     );
 
@@ -329,6 +348,109 @@ export const adminUpdateOrderStatus = async (req, res, next) => {
     res.json({
       message: 'Order status updated successfully.',
       order: orderData ? orderData.order : null
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const adminUpdateOrderDetails = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({
+      error: {
+        message: 'Validation failed',
+        details: errors.array()
+      }
+    });
+  }
+
+  try {
+    const id = Number(req.params.id);
+    const detailed = await getOrderWithItemsAdmin(id);
+    if (!detailed) {
+      return res.status(404).json({
+        error: {
+          message: 'Order not found'
+        }
+      });
+    }
+
+    const fieldsToUpdate = {};
+    if (req.body.priority && PRIORITY_OPTIONS.includes(req.body.priority)) {
+      fieldsToUpdate.priority = req.body.priority;
+    }
+    if (req.body.shippingAddress) {
+      fieldsToUpdate.address = req.body.shippingAddress;
+    }
+    if (req.body.city) {
+      fieldsToUpdate.city = req.body.city;
+    }
+    if (req.body.postalCode) {
+      fieldsToUpdate.postalCode = req.body.postalCode;
+    }
+
+    if (Object.keys(fieldsToUpdate).length > 0) {
+      await updateOrderFields(id, fieldsToUpdate);
+    }
+
+    if (Array.isArray(req.body.items) && req.body.items.length > 0) {
+      const itemsPayload = req.body.items;
+      const currentItems = await getOrderItemsForUpdate(id);
+
+      for (const itemPayload of itemsPayload) {
+        const currentItem = currentItems.find((item) => item.id === itemPayload.id);
+        if (!currentItem) {
+          continue;
+        }
+
+        const newQuantity = Number(itemPayload.quantity);
+        if (!Number.isInteger(newQuantity) || newQuantity < 1) {
+          return res.status(400).json({
+            error: {
+              message: 'Quantity must be a positive integer.'
+            }
+          });
+        }
+
+        const diff = newQuantity - currentItem.quantity;
+        if (diff !== 0) {
+          if (diff > 0 && currentItem.medicine_stock < diff) {
+            return res.status(400).json({
+              error: {
+                message: `Insufficient stock available for item #${currentItem.id}`
+              }
+            });
+          }
+
+          await updateOrderItemQuantity(currentItem.id, newQuantity);
+          await adjustMedicineStock(currentItem.medicine_id, -diff);
+        }
+      }
+
+      await recalculateOrderTotals(id);
+    }
+
+    if (req.body.paymentStatus && PAYMENT_STATUS_OPTIONS.includes(req.body.paymentStatus)) {
+      await updatePaymentStatusForOrder(id, req.body.paymentStatus, {
+        method: detailed.order.payment_method,
+        amount: detailed.order.total_amount
+      });
+    }
+
+    const updated = await getOrderWithItemsAdmin(id);
+    const items = (updated?.items || []).map((item) => ({
+      id: item.id,
+      medicineId: item.medicine_id,
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: Number(item.unit_price),
+      totalPrice: Number(item.total_price)
+    }));
+
+    res.json({
+      message: 'Order updated successfully.',
+      order: updated ? mapAdminOrderResponse(updated.order, items) : null
     });
   } catch (error) {
     next(error);

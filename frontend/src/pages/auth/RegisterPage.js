@@ -6,23 +6,64 @@ import { authService } from '../../services/authService';
 import Button from '../../components/common/Button';
 import './Auth.css';
 
+const passwordChecksConfig = [
+  { key: 'length', text: 'At least 8 characters', test: (value) => value.length >= 8 },
+  { key: 'uppercase', text: 'One uppercase letter (A-Z)', test: (value) => /[A-Z]/.test(value) },
+  { key: 'lowercase', text: 'One lowercase letter (a-z)', test: (value) => /[a-z]/.test(value) },
+  { key: 'number', text: 'One number (0-9)', test: (value) => /\d/.test(value) },
+  {
+    key: 'special',
+    text: 'One special character (!@#$%^&* etc.)',
+    test: (value) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(value)
+  }
+];
+
+const allowedEmailTlds = ['com', 'net', 'org', 'edu', 'gov', 'pk', 'io', 'co', 'us', 'in'];
+
 const RegisterPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const { register, handleSubmit, formState: { errors }, watch } = useForm();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    watch
+  } = useForm({
+    defaultValues: {
+      role: 'patient'
+    }
+  });
 
-  const password = watch('password');
+  const emailValue = watch('email') || '';
+  const password = watch('password') || '';
+
+  const emailPattern = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+  const emailHasValidFormat = emailValue ? emailPattern.test(emailValue) : false;
+  const emailHasAllowedTld = emailValue
+    ? allowedEmailTlds.some((tld) => emailValue.toLowerCase().endsWith(`.${tld}`))
+    : false;
+  const isEmailValid = emailHasValidFormat && emailHasAllowedTld;
+
+  const passwordChecks = passwordChecksConfig.map((item) => ({
+    ...item,
+    passed: item.test(password)
+  }));
+  const passedTotal = passwordChecks.filter((item) => item.passed).length;
+  const passwordStrength =
+    password.length === 0 ? 'Weak' : passedTotal === passwordChecks.length ? 'Strong' : passedTotal >= 3 ? 'Medium' : 'Weak';
 
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const { name, email, phone, password } = data;
+      const { name, email, phone, password, role } = data;
       await authService.register({
         name,
         email,
         phone,
         password,
-        role: 'patient'
+        role: role || 'patient'
       });
       toast.success('Registration successful! Please login.');
       navigate('/login');
@@ -45,7 +86,9 @@ const RegisterPage = () => {
 
           <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
             <div className="form-group">
-              <label htmlFor="name">Full Name</label>
+              <label htmlFor="name">
+                Full Name <span className="required-marker">*</span>
+              </label>
               <input
                 id="name"
                 type="text"
@@ -63,25 +106,43 @@ const RegisterPage = () => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="email">Email Address</label>
+              <label htmlFor="email">
+                Email Address <span className="required-marker">*</span>
+              </label>
               <input
                 id="email"
                 type="email"
                 {...register('email', {
                   required: 'Email is required',
                   pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    value: emailPattern,
                     message: 'Invalid email address'
+                  },
+                  validate: {
+                    tld: (value) =>
+                      allowedEmailTlds.some((tld) => value.toLowerCase().endsWith(`.${tld}`)) ||
+                      'Email domain must be .com, .net, .org, .pk, or similar'
                   }
                 })}
                 placeholder="Enter your email"
                 className={errors.email ? 'error' : ''}
               />
               {errors.email && <span className="error-message">{errors.email.message}</span>}
+              {emailValue && (
+                <div className={`field-status ${isEmailValid ? 'success' : 'error'}`}>
+                  {isEmailValid
+                    ? '✓ Valid email address'
+                    : !emailHasValidFormat
+                      ? 'Please enter a valid email address'
+                      : 'Email domain must be .com, .net, .org, .pk, etc.'}
+                </div>
+              )}
             </div>
 
             <div className="form-group">
-              <label htmlFor="phone">Phone Number</label>
+              <label htmlFor="phone">
+                Phone Number <span className="required-marker">*</span>
+              </label>
               <input
                 id="phone"
                 type="tel"
@@ -99,35 +160,92 @@ const RegisterPage = () => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                {...register('password', {
-                  required: 'Password is required',
-                  minLength: {
-                    value: 6,
-                    message: 'Password must be at least 6 characters'
-                  }
+              <label htmlFor="role">Select Role</label>
+              <select
+                id="role"
+                {...register('role', {
+                  required: 'Role is required'
                 })}
-                placeholder="Create a password"
-                className={errors.password ? 'error' : ''}
-              />
+                className={errors.role ? 'error' : ''}
+              >
+                <option value="patient">Patient (default)</option>
+                <option value="doctor">Doctor</option>
+                <option value="pharmacist">Pharmacist</option>
+              </select>
+              {errors.role && <span className="error-message">{errors.role.message}</span>}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="password">
+                Password <span className="required-marker">*</span>
+              </label>
+              <div className="password-field">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  {...register('password', {
+                    required: 'Password is required',
+                    minLength: {
+                      value: 8,
+                      message: 'Password must be at least 8 characters'
+                    },
+                    validate: {
+                      strength: (value) =>
+                        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/g.test(
+                          value
+                        ) ||
+                        'Password must include uppercase, lowercase, number, and special character'
+                    }
+                  })}
+                  placeholder="Create a password"
+                  className={errors.password ? 'error' : ''}
+                />
+                <button
+                  type="button"
+                  className="toggle-password"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
               {errors.password && <span className="error-message">{errors.password.message}</span>}
+              <div className="password-helper">
+                <p className={`password-strength-label ${passwordStrength.toLowerCase()}`}>
+                  Password Strength: {passwordStrength}
+                </p>
+                <p className="password-guidelines-title">Password must contain:</p>
+                <ul className="password-checklist">
+                  {passwordChecks.map((item) => (
+                    <li key={item.key} className={`password-check ${item.passed ? 'ok' : ''}`}>
+                      <span>{item.passed ? '✓' : '○'}</span>
+                      {item.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
 
             <div className="form-group">
               <label htmlFor="confirmPassword">Confirm Password</label>
-              <input
-                id="confirmPassword"
-                type="password"
-                {...register('confirmPassword', {
-                  required: 'Please confirm your password',
-                  validate: value => value === password || 'Passwords do not match'
-                })}
-                placeholder="Confirm your password"
-                className={errors.confirmPassword ? 'error' : ''}
-              />
+              <div className="password-field">
+                <input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  {...register('confirmPassword', {
+                    required: 'Please confirm your password',
+                    validate: (value) => value === password || 'Passwords do not match'
+                  })}
+                  placeholder="Confirm your password"
+                  className={errors.confirmPassword ? 'error' : ''}
+                />
+                <button
+                  type="button"
+                  className="toggle-password"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                >
+                  {showConfirmPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
               {errors.confirmPassword && <span className="error-message">{errors.confirmPassword.message}</span>}
             </div>
 
@@ -139,7 +257,12 @@ const RegisterPage = () => {
                     required: 'You must agree to the terms and conditions'
                   })}
                 />
-                <span>I agree to the <Link to="/terms">Terms and Conditions</Link></span>
+                <span>
+                  I agree to the{' '}
+                  <Link to="/terms#usage" className="inline-link">
+                    Terms and Conditions
+                  </Link>
+                </span>
               </label>
               {errors.terms && <span className="error-message">{errors.terms.message}</span>}
             </div>

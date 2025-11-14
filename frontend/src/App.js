@@ -23,6 +23,7 @@ import PrescriptionUploadPage from './pages/PrescriptionUploadPage';
 import ProfilePage from './pages/ProfilePage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
+import TermsPage from './pages/TermsPage';
 import AdminRoute from './components/auth/AdminRoute';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -51,6 +52,7 @@ function App() {
           <Route path="orders" element={<OrdersPage />} />
           <Route path="orders/:id" element={<OrderDetailPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="terms" element={<TermsPage />} />
         </Route>
         <Route path="/admin">
           <Route index element={<Navigate to="login" replace />} />

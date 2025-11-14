@@ -40,6 +40,11 @@ mysql -u <user> -p<password> online_medical_store < database/seeds/medicines_see
 - `orders` table stores shipping/contact details, totals, payment method, and prescription verification flag
 - `order_items` stores per-medicine quantity and pricing
 - Order numbers are generated automatically (unique per order)
+- From November 2025 onward, `orders.priority` tracks urgency (`normal`, `high`, `urgent`). If your database predates this column, run:
+  ```sql
+  ALTER TABLE orders
+    ADD COLUMN priority ENUM('normal', 'high', 'urgent') DEFAULT 'normal' AFTER status;
+  ```
 
 ## Payments
 - Each order links to a `payments` record capturing method, status, transaction/reference details

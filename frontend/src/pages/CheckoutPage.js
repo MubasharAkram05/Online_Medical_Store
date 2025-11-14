@@ -45,6 +45,7 @@ const CheckoutPage = () => {
   const { cartItems, getCartTotal, clearCart, removeUnavailableItems } = useCart();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cod');
+  const [priority, setPriority] = useState('normal');
   const [paymentDetails, setPaymentDetails] = useState({
     transactionId: '',
     reference: '',
@@ -213,6 +214,7 @@ const CheckoutPage = () => {
       const orderData = {
         ...data,
         payment_method: paymentMethod,
+        priority,
         items: cartItems.map((item) => ({
           medicine_id: item.id,
           quantity: item.quantity,
@@ -363,6 +365,22 @@ const CheckoutPage = () => {
                       className={errors.phone ? 'error' : ''}
                     />
                     {errors.phone && <span className="error-message">{errors.phone.message}</span>}
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="priority">Order Priority</label>
+                    <select
+                      id="priority"
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value)}
+                    >
+                      <option value="normal">Normal Delivery (2-4 days)</option>
+                      <option value="high">High Priority (within 48 hours)</option>
+                      <option value="urgent">Urgent / Critical</option>
+                    </select>
+                    <small className="field-hint">
+                      Urgent orders are handled with highest priority for medical needs.
+                    </small>
                   </div>
 
                   <div className="form-group full-width">

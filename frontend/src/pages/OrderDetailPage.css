@@ -96,6 +96,30 @@
   margin-bottom: 1.5rem;
 }
 
+.priority-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(15, 139, 127, 0.1);
+  color: #0f172a;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.priority-pill .priority-normal {
+  color: #22c55e;
+}
+
+.priority-pill .priority-high {
+  color: #f97316;
+}
+
+.priority-pill .priority-urgent {
+  color: #ef4444;
+}
+
 .item-row {
   display: flex;
   align-items: center;

@@ -19,6 +19,8 @@ import { logger } from '../utils/logger.js';
 export const register = async (req, res, next) => {
   try {
     const { name, email, phone, password, role } = req.body;
+    const allowedRoles = ['patient', 'doctor', 'pharmacist', 'admin'];
+    const normalizedRole = allowedRoles.includes(role) ? role : 'patient';
 
     const existingEmail = await findUserByEmail(email);
     if (existingEmail) {
@@ -44,7 +46,7 @@ export const register = async (req, res, next) => {
       email,
       phone,
       passwordHash,
-      role
+      role: normalizedRole
     });
 
     const payload = {

@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS orders (
   user_id BIGINT NOT NULL,
   order_number VARCHAR(30) NOT NULL UNIQUE,
   status ENUM('pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
+  priority ENUM('normal', 'high', 'urgent') DEFAULT 'normal',
   payment_method ENUM('cod', 'card', 'bank', 'wallet') DEFAULT 'cod',
   subtotal_amount DECIMAL(10, 2) NOT NULL,
   tax_amount DECIMAL(10, 2) NOT NULL,

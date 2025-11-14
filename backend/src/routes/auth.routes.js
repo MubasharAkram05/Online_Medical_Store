@@ -14,6 +14,8 @@ import { authenticate } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
+const allowedEmailTlds = ['com', 'net', 'org', 'edu', 'gov', 'pk', 'io', 'co', 'us', 'in'];
+
 const registerValidators = [
   body('name')
     .trim()
@@ -22,14 +24,23 @@ const registerValidators = [
   body('email')
     .isEmail()
     .withMessage('Valid email is required')
-    .normalizeEmail(),
+    .normalizeEmail()
+    .custom((value) => {
+      const tld = value.split('.').pop()?.toLowerCase();
+      if (!tld || !allowedEmailTlds.includes(tld)) {
+        throw new Error('Please use a valid email domain (e.g., .com, .net)');
+      }
+      return true;
+    }),
   body('phone')
     .optional({ nullable: true })
     .matches(/^[0-9]{10,15}$/)
     .withMessage('Phone number must be 10-15 digits'),
   body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long'),
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/)
+    .withMessage('Password must include uppercase, lowercase, number, and special character'),
   body('role')
     .optional()
     .isIn(['patient', 'doctor', 'pharmacist', 'admin'])
