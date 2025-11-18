@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from './constants';
+import { toast } from 'react-toastify';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -26,6 +27,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Network/connection errors - e.g. backend not running - have no `response`.
+    if (!error.response) {
+      toast.error('Unable to reach backend server. Is the backend running on port 4000?');
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401) {
       const requestUrl = (error.config?.url || '').toLowerCase();
       const isAuthAttempt =

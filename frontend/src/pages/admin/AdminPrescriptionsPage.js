@@ -35,12 +35,29 @@ const AdminPrescriptionsPage = () => {
       await adminService.updatePrescriptionStatus(id, { status });
       toast.success('Prescription updated.');
       await loadPrescriptions(statusFilter);
+      
+      // Trigger event to update prescription status everywhere (especially if verified)
+      if (status === 'verified' && typeof window !== 'undefined') {
+        console.log('Prescription verified, triggering prescriptionUpdated event');
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
+        }, 500);
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
+        }, 2000);
+      }
     } catch (error) {
       toast.error(error.response?.data?.error?.message || 'Unable to update prescription.');
     } finally {
       setUpdatingId(null);
     }
   };
+
+  const baseUploadsUrl = React.useMemo(() => {
+    const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
+    const baseUrl = apiBase.replace(/\/api$/, '');
+    return `${baseUrl}/uploads`;
+  }, []);
 
   if (loading) {
     return (
@@ -51,11 +68,6 @@ const AdminPrescriptionsPage = () => {
       </div>
     );
   }
-
-  const baseUploadsUrl = React.useMemo(() => {
-    const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
-    return apiBase.replace(/\/api$/, '');
-  }, []);
 
   return (
     <div className="admin-page">

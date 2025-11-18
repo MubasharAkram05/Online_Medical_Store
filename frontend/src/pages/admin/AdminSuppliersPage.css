@@ -1,13 +1,324 @@
+.admin-section {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.section-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.section-header p {
+  color: #5f738c;
+  margin-top: 0.35rem;
+}
+
+.admin-form-card {
+  padding: 1.75rem;
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 15px 40px rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  margin-bottom: 2rem;
+}
+
+.admin-form-card h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 1.5rem;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.form-grid input,
+.form-grid textarea,
+.form-grid select {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-grid input:focus,
+.form-grid textarea:focus,
+.form-grid select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+.textarea-field {
+  grid-column: span 2;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.admin-table-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 15px 40px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 1.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-header h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+}
+
+.card-header p {
+  color: #5f738c;
+  margin: 0.35rem 0 0;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #374151;
+  text-align: left;
+  padding: 1rem 1.25rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-table td {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #374151;
+}
+
+.admin-table tr:hover {
+  background: #f8fafc;
+}
+
 .table-actions {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
 }
 
+.admin-loading {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2.5rem;
+  text-align: center;
+  font-weight: 600;
+  color: #475569;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 1024px) {
+  .admin-section {
+    max-width: 100%;
+    padding: 1.5rem;
+  }
+
+  .section-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .admin-form-card {
+    padding: 1.5rem;
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+}
+
 @media (max-width: 768px) {
+  .admin-section {
+    padding: 1rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .section-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .admin-form-card {
+    padding: 1.25rem;
+  }
+
+  .admin-form-card h2 {
+    font-size: 1.2rem;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .form-grid label {
+    font-size: 0.85rem;
+  }
+
+  .form-grid input,
+  .form-grid textarea,
+  .form-grid select {
+    padding: 0.7rem 0.9rem;
+    font-size: 0.9rem;
+  }
+
+  .textarea-field {
+    grid-column: 1;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .card-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .admin-table-card {
+    overflow-x: auto;
+  }
+
+  .admin-table {
+    min-width: 600px;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.85rem;
+  }
+
   .table-actions {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-section {
+    padding: 0.75rem;
+  }
+
+  .section-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .section-header p {
+    font-size: 0.85rem;
+  }
+
+  .admin-form-card {
+    padding: 1rem;
+  }
+
+  .admin-form-card h2 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+  }
+
+  .form-grid {
+    gap: 0.75rem;
+  }
+
+  .form-grid label {
+    font-size: 0.8rem;
+  }
+
+  .form-grid input,
+  .form-grid textarea,
+  .form-grid select {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+  }
+
+  .form-grid textarea {
+    min-height: 60px;
+  }
+
+  .form-actions {
+    gap: 0.5rem;
+  }
+
+  .card-header {
+    padding: 1.25rem;
+  }
+
+  .card-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .card-header p {
+    font-size: 0.85rem;
+  }
+
+  .admin-table {
+    min-width: 500px;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 0.6rem 0.4rem;
+    font-size: 0.8rem;
   }
 }
 

@@ -15,6 +15,9 @@ const PrescriptionUploadPage = () => {
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editNotes, setEditNotes] = useState('');
+  const [editFile, setEditFile] = useState(null);
 
   const loadPrescriptions = async () => {
     setFetching(true);
@@ -43,6 +46,65 @@ const PrescriptionUploadPage = () => {
       toast.error(error.response?.data?.error?.message || 'Upload failed. Try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEdit = (prescription) => {
+    setEditingId(prescription.id);
+    setEditNotes(prescription.notes || '');
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      if (editFile) {
+        // If new file is uploaded, create a new prescription
+        const formData = new FormData();
+        formData.append('file', editFile);
+        formData.append('notes', editNotes);
+        
+        await prescriptionService.upload(formData);
+        toast.success('Prescription updated successfully with new file.');
+        
+        // Delete the old prescription
+        await prescriptionService.delete(editingId);
+      } else {
+        // Only update notes
+        await prescriptionService.update(editingId, editNotes);
+        toast.success('Prescription notes updated successfully.');
+        setPrescriptions((prev) =>
+          prev.map((p) =>
+            p.id === editingId ? { ...p, notes: editNotes } : p
+          )
+        );
+      }
+      
+      // Reload prescriptions to get the latest data
+      await loadPrescriptions();
+      setEditingId(null);
+      setEditNotes('');
+      setEditFile(null);
+    } catch (error) {
+      toast.error(error.response?.data?.error?.message || 'Update failed. Try again.');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditNotes('');
+    setEditFile(null);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this prescription?')) {
+      return;
+    }
+
+    try {
+      await prescriptionService.delete(id);
+      toast.success('Prescription deleted successfully.');
+      setPrescriptions((prev) => prev.filter((p) => p.id !== id));
+    } catch (error) {
+      toast.error(error.response?.data?.error?.message || 'Delete failed. Try again.');
     }
   };
 
@@ -84,17 +146,77 @@ const PrescriptionUploadPage = () => {
                 <div>
                   <span className={`status-badge status-${item.status}`}>{item.status}</span>
                 </div>
-                <div className="notes-cell">{item.notes || '—'}</div>
+                <div className="notes-cell">
+                  {editingId === item.id ? (
+                    <div className="edit-notes">
+                      <textarea
+                        value={editNotes}
+                        onChange={(e) => setEditNotes(e.target.value)}
+                        placeholder="Add notes..."
+                        rows={2}
+                      />
+                      <div className="file-upload-section">
+                        <label className="file-upload-label">
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={(e) => setEditFile(e.target.files[0])}
+                            className="file-input"
+                          />
+                          <span className="file-upload-text">
+                            {editFile ? `New file: ${editFile.name}` : 'Choose new file (optional)'}
+                          </span>
+                        </label>
+                        {editFile && (
+                          <div className="file-info">
+                            <span className="file-size">({formatFileSize(editFile.size)})</span>
+                            <button
+                              type="button"
+                              onClick={() => setEditFile(null)}
+                              className="remove-file-btn"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="edit-actions">
+                        <button onClick={handleSaveEdit} className="save-btn">
+                          Save
+                        </button>
+                        <button onClick={handleCancelEdit} className="cancel-btn">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <span>{item.notes || '—'}</span>
+                  )}
+                </div>
                 <div>{new Date(item.uploadedAt).toLocaleString()}</div>
-                <div>
+                <div className="actions-cell">
                   <a
                     href={item.fileUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="download-link"
+                    className="view-link"
                   >
                     View
                   </a>
+                  <button
+                    onClick={() => handleEdit(item)}
+                    className="edit-btn"
+                    disabled={editingId !== null}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="delete-btn"
+                    disabled={item.status === 'verified'}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}

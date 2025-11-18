@@ -3,29 +3,15 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import AddProductModal from '../../components/admin/AddProductModal';
 import { adminService } from '../../services/adminService';
 import './AdminMedicinesPage.css';
-
-const initialForm = {
-  name: '',
-  description: '',
-  price: '',
-  stock: '',
-  requires_prescription: false,
-  category: '',
-  image: '',
-  dosageInstructions: '',
-  sideEffects: '',
-  interactionNotes: '',
-  expiry_date: '',
-  supplier_id: ''
-};
 
 const AdminMedicinesPage = () => {
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState(initialForm);
-  const [editingId, setEditingId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMedicine, setEditingMedicine] = useState(null);
   const [search, setSearch] = useState('');
   const [suppliers, setSuppliers] = useState([]);
   const [stockUpdatingId, setStockUpdatingId] = useState(null);
@@ -44,6 +30,10 @@ const AdminMedicinesPage = () => {
       .map((medicine) => (medicine.category || '').trim())
       .filter(Boolean);
     return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
+  }, [medicines]);
+
+  const lowStockProducts = useMemo(() => {
+    return medicines.filter((medicine) => medicine.stock <= 5);
   }, [medicines]);
 
   const loadMedicines = async () => {
@@ -90,56 +80,34 @@ const AdminMedicinesPage = () => {
     }
   };
 
-  const resetForm = () => {
-    setForm(initialForm);
-    setEditingId(null);
+  const handleOpenModal = () => {
+    setEditingMedicine(null);
+    setIsModalOpen(true);
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingMedicine(null);
+  };
 
-    const payload = {
-      ...form,
-      price: Number(form.price),
-      stock: Number(form.stock),
-      supplier_id: form.supplier_id || null,
-      interactionNotes: form.interactionNotes
-        ? form.interactionNotes.split('\n').map((line) => line.trim()).filter(Boolean)
-        : []
-    };
-
+  const handleSave = async (formData, medicineId) => {
     try {
-      if (editingId) {
-        await adminService.updateMedicine(editingId, payload);
+      if (medicineId) {
+        await adminService.updateMedicine(medicineId, formData);
         toast.success('Medicine updated successfully.');
       } else {
-        await adminService.createMedicine(payload);
+        await adminService.createMedicine(formData);
         toast.success('Medicine created successfully.');
       }
-      resetForm();
       await loadMedicines();
     } catch (error) {
-      toast.error(error.response?.data?.error?.message || 'Unable to save medicine.');
+      throw error; // Re-throw to let modal handle the error display
     }
   };
 
   const handleEdit = (medicine) => {
-    setEditingId(medicine.id);
-    setForm({
-      name: medicine.name || '',
-      description: medicine.description || '',
-      price: medicine.price ?? '',
-      stock: medicine.stock ?? '',
-      requires_prescription: Boolean(medicine.requires_prescription),
-      category: medicine.category || '',
-      image: medicine.image || '',
-      dosageInstructions: medicine.dosageInstructions || '',
-      sideEffects: medicine.sideEffects || '',
-      interactionNotes: (medicine.interactionNotes || []).join('\n'),
-      expiry_date: medicine.expiryDate ? medicine.expiryDate.slice(0, 10) : '',
-      supplier_id: medicine.supplier?.id || ''
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setEditingMedicine(medicine);
+    setIsModalOpen(true);
   };
 
   const handleDelete = async (id) => {
@@ -207,156 +175,41 @@ const AdminMedicinesPage = () => {
           <h1>Product Management</h1>
           <p>Maintain inventory, update pricing, and track expiry dates.</p>
         </div>
-        <Link className="link-button" to="/admin/suppliers">
-          Manage Suppliers
-        </Link>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <Button variant="primary" onClick={handleOpenModal}>
+            Add Product
+          </Button>
+          <Link className="link-button" to="/admin/suppliers">
+            Manage Suppliers
+          </Link>
+        </div>
       </div>
 
-      <Card className="admin-form-card">
-        <h2>{editingId ? 'Edit Product' : 'Add Product'}</h2>
-        <form className="admin-form" onSubmit={handleSubmit}>
-          <div className="form-grid">
-              <label>
-                <span>Name</span>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                  required
-                />
-              </label>
-              <label>
-                <span>Category</span>
-                <input
-                  type="text"
-                  value={form.category}
-                  onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
-                  list="medicine-category-suggestions"
-                  placeholder="Select or enter category"
-                />
-                <datalist id="medicine-category-suggestions">
-                  {categorySuggestions.map((option) => (
-                    <option key={option} value={option} />
-                  ))}
-                </datalist>
-              </label>
-              <label>
-                <span>Price (PKR)</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.price}
-                  onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
-                  required
-                />
-              </label>
-              <label>
-                <span>Stock</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.stock}
-                  onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))}
-                  required
-                />
-              </label>
-              <label className="checkbox-field">
-                <input
-                  type="checkbox"
-                  checked={form.requires_prescription}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      requires_prescription: e.target.checked
-                    }))
-                  }
-                />
-                <span>Requires Prescription</span>
-              </label>
-              <label>
-                <span>Image URL</span>
-                <input
-                  type="url"
-                  value={form.image}
-                  onChange={(e) => setForm((prev) => ({ ...prev, image: e.target.value }))}
-                />
-              </label>
-              <label className="textarea-field">
-                <span>Description</span>
-                <textarea
-                  rows="3"
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, description: e.target.value }))
-                  }
-                />
-              </label>
-              <label className="textarea-field">
-                <span>Dosage Instructions</span>
-                <textarea
-                  rows="3"
-                  value={form.dosageInstructions}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, dosageInstructions: e.target.value }))
-                  }
-                />
-              </label>
-              <label className="textarea-field">
-                <span>Side Effects</span>
-                <textarea
-                  rows="3"
-                  value={form.sideEffects}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, sideEffects: e.target.value }))
-                  }
-                />
-              </label>
-              <label>
-                <span>Expiry Date</span>
-                <input
-                  type="date"
-                  value={form.expiry_date}
-                  onChange={(e) => setForm((prev) => ({ ...prev, expiry_date: e.target.value }))}
-                />
-              </label>
-              <label>
-                <span>Supplier</span>
-                <select
-                  value={form.supplier_id}
-                  onChange={(e) => setForm((prev) => ({ ...prev, supplier_id: e.target.value }))}
-                >
-                  <option value="">Select supplier</option>
-                  {suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="textarea-field full-width">
-                <span>Interaction Notes (one per line)</span>
-                <textarea
-                  rows="3"
-                  value={form.interactionNotes}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, interactionNotes: e.target.value }))
-                  }
-                />
-              </label>
-            </div>
-            <div className="form-actions">
-              <Button type="submit" variant="primary">
-                {editingId ? 'Update Product' : 'Add Product'}
-              </Button>
-              {editingId && (
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-              )}
-            </div>
-        </form>
-      </Card>
+      {/* Low Stock Products Section */}
+      {lowStockProducts.length > 0 && (
+        <Card className="admin-form-card">
+          <h2>Low Stock Products</h2>
+          <div className="low-stock-grid">
+            {lowStockProducts.slice(0, 6).map((product) => (
+              <div className="low-stock-card" key={product.id}>
+                <div className="low-stock-card-header">
+                  <h4>{product.name}</h4>
+                </div>
+                <div className="low-stock-card-body">
+                  <p className="low-stock-category">Category: {product.category || '—'}</p>
+                  <div className="low-stock-meta">
+                    <span className="low-stock-label">Stock:</span>
+                    <span className="low-stock-value">{product.stock}</span>
+                    <span className="low-stock-expiry">
+                      Expiry: {product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card className="admin-table-card">
         <div className="card-header">
@@ -443,6 +296,15 @@ const AdminMedicinesPage = () => {
           </tbody>
         </table>
       </Card>
+
+      <AddProductModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSave={handleSave}
+        editingMedicine={editingMedicine}
+        suppliers={suppliers}
+        categorySuggestions={categorySuggestions}
+      />
     </div>
   );
 };

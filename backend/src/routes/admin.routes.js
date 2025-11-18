@@ -13,6 +13,7 @@ import {
   adminListPrescriptions,
   adminUpdatePrescriptionStatus,
   adminSalesReport,
+  downloadReport,
   adminListUsers,
   adminUpdateUserRole,
   adminListSuppliers,
@@ -22,6 +23,7 @@ import {
 } from '../controllers/admin.controller.js';
 import { authenticate, authorizeRoles } from '../middleware/auth.middleware.js';
 import { validateRequest } from '../middleware/validate.js';
+import { medicineImageUpload } from '../middleware/upload.middleware.js';
 
 const router = Router();
 
@@ -46,6 +48,18 @@ router.post(
       .withMessage('Supplier id must be positive')
   ],
   validateRequest,
+  (req, res, next) => {
+    medicineImageUpload.single('image')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({
+          error: {
+            message: err.message || 'Failed to upload image'
+          }
+        });
+      }
+      next();
+    });
+  },
   adminCreateMedicine
 );
 router.put(
@@ -64,6 +78,18 @@ router.put(
       .withMessage('Supplier id must be positive')
   ],
   validateRequest,
+  (req, res, next) => {
+    medicineImageUpload.single('image')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({
+          error: {
+            message: err.message || 'Failed to upload image'
+          }
+        });
+      }
+      next();
+    });
+  },
   adminUpdateMedicine
 );
 router.delete('/medicines/:id', adminDeleteMedicine);
@@ -144,6 +170,7 @@ router.patch(
 );
 
 router.get('/reports/sales', adminSalesReport);
+router.get('/reports/download/:type/:format', downloadReport);
 
 router.get('/users', adminListUsers);
 router.patch(

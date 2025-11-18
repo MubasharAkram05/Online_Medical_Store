@@ -7,6 +7,8 @@ export const prescriptionService = {
         'Content-Type': 'multipart/form-data'
       }
     }),
-  list: () => api.get('/prescriptions')
+  list: () => api.get('/prescriptions'),
+  update: (id, notes) => api.patch(`/prescriptions/${id}`, { notes }),
+  delete: (id) => api.delete(`/prescriptions/${id}`)
 };
 

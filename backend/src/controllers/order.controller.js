@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { getPool } from '../config/database.js';
 import { findMedicinesByIds, decrementMedicineStock } from '../models/medicine.model.js';
 import { createOrder, createOrderItems, getOrdersByUser, getOrderWithItems } from '../models/order.model.js';
-import { hasAnyPrescription, hasVerifiedPrescription } from '../models/prescription.model.js';
+import { hasAnyPrescription, hasVerifiedPrescription, markPrescriptionAsUsed } from '../models/prescription.model.js';
 import { createPayment } from '../models/payment.model.js';
 import { findInteractionPairs } from '../models/interaction.model.js';
 import { buildInteractionWarnings } from '../utils/interactions.js';
@@ -193,6 +193,20 @@ const paymentDetails = req.body.payment || {};
 
       await createOrderItems(connection, orderId, orderItems);
       await decrementMedicineStock(connection, orderItems);
+
+      // Mark prescription as expired after order is placed
+      if (requiresPrescription) {
+        const [updateResult] = await connection.query(
+          `UPDATE prescriptions
+           SET status = 'expired'
+           WHERE user_id = ? 
+             AND status IN ('pending', 'verified')
+           ORDER BY uploaded_at DESC
+           LIMIT 1`,
+          [req.user.id]
+        );
+        console.log(`Prescription expired for user ${req.user.id} after order ${orderId}. Affected rows: ${updateResult.affectedRows}`);
+      }
 
       const paymentStatus = paymentMethod === 'cod' ? 'pending' : 'completed';
       const capturedAt = paymentStatus === 'completed' ? new Date() : null;

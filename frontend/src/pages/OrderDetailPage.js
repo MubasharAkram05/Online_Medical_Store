@@ -23,7 +23,36 @@ const OrderDetailPage = () => {
     const loadOrder = async () => {
       try {
         const response = await orderService.getOrderById(id);
-        setOrder(response.data?.order || null);
+        const orderData = response.data?.order || null;
+        setOrder(orderData);
+        
+        console.log('Order loaded:', orderData);
+        console.log('Order status:', orderData?.status);
+        
+        // Check if order has prescription required items
+        const hasPrescriptionItems = orderData?.items?.some(
+          item => item.requiresPrescription === true || item.requiresPrescription === 1
+        );
+        console.log('Order has prescription items:', hasPrescriptionItems);
+        
+        // Trigger prescription reload event if order is completed/delivered
+        if (orderData && (orderData.status === 'completed' || orderData.status === 'delivered') && hasPrescriptionItems) {
+          console.log('Triggering prescriptionUpdated event for completed order');
+          if (typeof window !== 'undefined') {
+            setTimeout(() => {
+              console.log('Dispatching prescriptionUpdated event (500ms)');
+              window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
+            }, 500);
+            setTimeout(() => {
+              console.log('Dispatching prescriptionUpdated event (2s)');
+              window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
+            }, 2000);
+            setTimeout(() => {
+              console.log('Dispatching prescriptionUpdated event (4s)');
+              window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
+            }, 4000);
+          }
+        }
       } catch (error) {
         toast.error(error.response?.data?.error?.message || 'Unable to load order.');
         navigate('/orders', { replace: true });

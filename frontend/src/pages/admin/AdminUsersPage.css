@@ -1,3 +1,28 @@
+.admin-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.admin-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.35rem;
+}
+
+.admin-header p {
+  color: #5f738c;
+}
+
 .filters {
   display: flex;
   align-items: center;
@@ -11,15 +36,47 @@
   font-size: 0.95rem;
 }
 
-.table-actions {
-  display: flex;
-  justify-content: flex-end;
+.admin-table-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 15px 40px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #374151;
+  text-align: left;
+  padding: 1rem 1.25rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-table td {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #374151;
+}
+
+.admin-table tr:hover {
+  background: #f8fafc;
 }
 
 .admin-table select {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 0.4rem 0.75rem;
+}
+
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .link-button {
@@ -56,5 +113,155 @@
   text-align: center;
   padding: 2rem;
   color: #64748b;
+}
+
+.admin-loading {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2.5rem;
+  text-align: center;
+  font-weight: 600;
+  color: #475569;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 1024px) {
+  .admin-page {
+    max-width: 100%;
+    padding: 1.5rem;
+  }
+
+  .admin-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .filters {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-page {
+    padding: 1rem;
+  }
+
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .admin-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .admin-header p {
+    font-size: 0.9rem;
+  }
+
+  .filters {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .filters select {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.9rem;
+  }
+
+  .admin-table-card {
+    overflow-x: auto;
+  }
+
+  .admin-table {
+    min-width: 700px;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .admin-table select {
+    font-size: 0.85rem;
+    padding: 0.35rem 0.6rem;
+  }
+
+  .checkbox-field {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .checkbox-field input {
+    width: 16px;
+    height: 16px;
+  }
+
+  .table-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .link-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-page {
+    padding: 0.75rem;
+  }
+
+  .admin-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .admin-header p {
+    font-size: 0.85rem;
+  }
+
+  .filters select {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .admin-table {
+    min-width: 600px;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 0.6rem 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  .admin-table select {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .checkbox-field input {
+    width: 14px;
+    height: 14px;
+  }
+
+  .checkbox-field span {
+    font-size: 0.8rem;
+  }
+
+  .link-button {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.7rem;
+  }
+
+  .empty-state {
+    padding: 1.5rem;
+    font-size: 0.85rem;
+  }
 }
 

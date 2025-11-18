@@ -39,6 +39,16 @@ import {
   deleteSupplier
 } from '../models/supplier.model.js';
 import { updatePaymentStatusForOrder } from '../models/payment.model.js';
+import {
+  generateSalesReportPDF,
+  generateInventoryReportPDF,
+  generateExpiryReportPDF
+} from '../utils/reportPdf.js';
+import {
+  generateSalesReportCSV,
+  generateInventoryReportCSV,
+  generateExpiryReportCSV
+} from '../utils/reportCsv.js';
 
 const PRIORITY_OPTIONS = ['normal', 'high', 'urgent'];
 const PAYMENT_STATUS_OPTIONS = ['pending', 'completed', 'failed', 'refunded'];
@@ -167,19 +177,43 @@ export const adminCreateMedicine = async (req, res, next) => {
   }
 
   try {
+    // Handle image upload: if file is uploaded, use it; otherwise use URL from body
+    let imageUrl = req.body.image || '';
+    if (req.file) {
+      const filePath = `medicines/${req.file.filename}`;
+      imageUrl = `${req.protocol}://${req.get('host')}/uploads/${filePath}`;
+    }
+
+    // Parse interactionNotes if it's a JSON string
+    let interactionNotes = req.body.interactionNotes;
+    if (typeof interactionNotes === 'string') {
+      try {
+        const parsed = JSON.parse(interactionNotes);
+        interactionNotes = Array.isArray(parsed) ? parsed : [parsed];
+      } catch (e) {
+        // If not JSON, treat as newline-separated string
+        interactionNotes = interactionNotes
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean);
+      }
+    } else if (!Array.isArray(interactionNotes)) {
+      interactionNotes = interactionNotes ? [interactionNotes] : [];
+    }
+
     const newId = await createMedicine({
       name: req.body.name,
       description: req.body.description,
       price: req.body.price,
       stock: req.body.stock,
       requiresPrescription: req.body.requires_prescription,
-      imageUrl: req.body.image,
+      imageUrl: imageUrl,
       category: req.body.category,
       expiryDate: req.body.expiry_date,
       supplierId: req.body.supplier_id,
       dosageInstructions: req.body.dosageInstructions,
       sideEffects: req.body.sideEffects,
-      interactionNotes: req.body.interactionNotes
+      interactionNotes: interactionNotes
     });
 
     const medicine = await getMedicineById(newId);
@@ -215,19 +249,43 @@ export const adminUpdateMedicine = async (req, res, next) => {
       });
     }
 
+    // Handle image upload: if file is uploaded, use it; otherwise use URL from body
+    let imageUrl = req.body.image || existing.image || '';
+    if (req.file) {
+      const filePath = `medicines/${req.file.filename}`;
+      imageUrl = `${req.protocol}://${req.get('host')}/uploads/${filePath}`;
+    }
+
+    // Parse interactionNotes if it's a JSON string
+    let interactionNotes = req.body.interactionNotes;
+    if (typeof interactionNotes === 'string') {
+      try {
+        const parsed = JSON.parse(interactionNotes);
+        interactionNotes = Array.isArray(parsed) ? parsed : [parsed];
+      } catch (e) {
+        // If not JSON, treat as newline-separated string
+        interactionNotes = interactionNotes
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean);
+      }
+    } else if (!Array.isArray(interactionNotes)) {
+      interactionNotes = interactionNotes ? [interactionNotes] : [];
+    }
+
     await updateMedicine(id, {
       name: req.body.name,
       description: req.body.description,
       price: req.body.price,
       stock: req.body.stock,
       requiresPrescription: req.body.requires_prescription,
-      imageUrl: req.body.image,
+      imageUrl: imageUrl,
       category: req.body.category,
       expiryDate: req.body.expiry_date,
       supplierId: req.body.supplier_id,
       dosageInstructions: req.body.dosageInstructions,
       sideEffects: req.body.sideEffects,
-      interactionNotes: req.body.interactionNotes
+      interactionNotes: interactionNotes
     });
 
     const updated = await getMedicineById(id);
@@ -313,7 +371,8 @@ export const adminListOrders = async (req, res, next) => {
           name: item.name,
           quantity: item.quantity,
           unitPrice: Number(item.unit_price),
-          totalPrice: Number(item.total_price)
+          totalPrice: Number(item.total_price),
+          requiresPrescription: Boolean(item.requires_prescription)
         }));
 
         return mapAdminOrderResponse(order, items);
@@ -341,7 +400,30 @@ export const adminUpdateOrderStatus = async (req, res, next) => {
 
   try {
     const id = Number(req.params.id);
-    await updateOrderStatus(id, req.body.status);
+    const newStatus = req.body.status;
+    
+    // Get order data before updating to check if prescription is required
+    const orderDataBefore = await getOrderWithItemsAdmin(id);
+    const requiresPrescription = orderDataBefore?.items?.some(
+      item => item.requires_prescription === 1 || item.requires_prescription === true
+    );
+    const userId = orderDataBefore?.order?.user_id;
+    
+    await updateOrderStatus(id, newStatus);
+
+    // If order is completed/delivered and requires prescription, expire the prescription
+    if ((newStatus === 'completed' || newStatus === 'delivered') && requiresPrescription && userId) {
+      const [updateResult] = await getPool().query(
+        `UPDATE prescriptions
+         SET status = 'expired'
+         WHERE user_id = ? 
+           AND status IN ('pending', 'verified')
+         ORDER BY uploaded_at DESC
+         LIMIT 1`,
+        [userId]
+      );
+      console.log(`Prescription expired for user ${userId} after order ${id} status changed to ${newStatus}. Affected rows: ${updateResult.affectedRows}`);
+    }
 
     const orderData = await getOrderWithItemsAdmin(id);
 
@@ -445,7 +527,8 @@ export const adminUpdateOrderDetails = async (req, res, next) => {
       name: item.name,
       quantity: item.quantity,
       unitPrice: Number(item.unit_price),
-      totalPrice: Number(item.total_price)
+      totalPrice: Number(item.total_price),
+      requiresPrescription: Boolean(item.requires_prescription)
     }));
 
     res.json({
@@ -455,6 +538,10 @@ export const adminUpdateOrderDetails = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+const buildFileUrl = (req, filePath) => {
+  return `${req.protocol}://${req.get('host')}/uploads/${filePath.replace(/\\/g, '/')}`;
 };
 
 export const adminListPrescriptions = async (req, res, next) => {
@@ -469,6 +556,9 @@ export const adminListPrescriptions = async (req, res, next) => {
         userEmail: prescription.user_email,
         filePath: prescription.file_path,
         fileName: prescription.file_original_name,
+        fileMimeType: prescription.file_mime_type,
+        fileSize: prescription.file_size,
+        fileUrl: buildFileUrl(req, prescription.file_path),
         status: prescription.status,
         notes: prescription.notes,
         uploadedAt: prescription.uploaded_at,
@@ -520,6 +610,124 @@ export const adminSalesReport = async (req, res, next) => {
     res.json({
       report
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const downloadReport = async (req, res, next) => {
+  try {
+    const { type, format } = req.params;
+    const days = req.query.days ? Number(req.query.days) : 7;
+
+    if (!['sales', 'inventory', 'expiry'].includes(type)) {
+      return res.status(400).json({
+        error: { message: 'Invalid report type' }
+      });
+    }
+
+    if (!['pdf', 'csv'].includes(format)) {
+      return res.status(400).json({
+        error: { message: 'Invalid format. Use pdf or csv' }
+      });
+    }
+
+    if (type === 'sales') {
+      const report = await getSalesReport({ days });
+      const totalOrders = report.reduce((sum, day) => sum + (Number(day.orders) || 0), 0);
+      const totalRevenue = report.reduce((sum, day) => sum + (Number(day.revenue) || 0), 0);
+      const averageDailyRevenue = report.length > 0 ? totalRevenue / report.length : 0;
+
+      const reportData = {
+        summary: {
+          totalOrders,
+          totalRevenue,
+          averageDailyRevenue
+        },
+        dailyData: report
+      };
+
+      if (format === 'pdf') {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename=sales-report-${new Date().toISOString().split('T')[0]}.pdf`
+        );
+        generateSalesReportPDF(reportData, res);
+      } else {
+        const csv = generateSalesReportCSV(reportData);
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename=sales-report-${new Date().toISOString().split('T')[0]}.csv`
+        );
+        res.send(csv);
+      }
+    } else if (type === 'inventory') {
+      const lowStock = await findLowStockMedicines(5);
+      const formattedProducts = lowStock.map(formatMedicineResponse);
+      const totalValue = formattedProducts.reduce(
+        (sum, p) => sum + (Number(p.price) || 0) * (Number(p.stock) || 0),
+        0
+      );
+
+      const reportData = {
+        summary: {
+          totalItems: formattedProducts.length,
+          totalValue
+        },
+        products: formattedProducts
+      };
+
+      if (format === 'pdf') {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename=inventory-report-${new Date().toISOString().split('T')[0]}.pdf`
+        );
+        generateInventoryReportPDF(reportData, res);
+      } else {
+        const csv = generateInventoryReportCSV(reportData);
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename=inventory-report-${new Date().toISOString().split('T')[0]}.csv`
+        );
+        res.send(csv);
+      }
+    } else if (type === 'expiry') {
+      const expiring = await findExpiringMedicines(30);
+      const formattedProducts = expiring.map(formatMedicineResponse);
+      const totalValue = formattedProducts.reduce(
+        (sum, p) => sum + (Number(p.price) || 0) * (Number(p.stock) || 0),
+        0
+      );
+
+      const reportData = {
+        summary: {
+          totalItems: formattedProducts.length,
+          totalValue
+        },
+        products: formattedProducts
+      };
+
+      if (format === 'pdf') {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename=expiry-report-${new Date().toISOString().split('T')[0]}.pdf`
+        );
+        generateExpiryReportPDF(reportData, res);
+      } else {
+        const csv = generateExpiryReportCSV(reportData);
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename=expiry-report-${new Date().toISOString().split('T')[0]}.csv`
+        );
+        res.send(csv);
+      }
+    }
   } catch (error) {
     next(error);
   }

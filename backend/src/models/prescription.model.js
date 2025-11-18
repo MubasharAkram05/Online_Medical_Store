@@ -86,7 +86,11 @@ export const getAllPrescriptions = async ({ status }) => {
 
   const [rows] = await getPool().query(query, params);
 
-  return rows;
+  return rows.map(row => ({
+    ...row,
+    file_mime_type: row.file_mime_type || '',
+    file_size: row.file_size || 0
+  }));
 };
 
 export const updatePrescriptionStatus = async (id, status, verifiedBy, notes) => {
@@ -98,6 +102,38 @@ export const updatePrescriptionStatus = async (id, status, verifiedBy, notes) =>
          notes = COALESCE(?, notes)
      WHERE id = ?`,
     [status, verifiedBy, status, notes || null, id]
+  );
+};
+
+export const updatePrescription = async (id, notes) => {
+  await getPool().query(
+    `UPDATE prescriptions
+     SET notes = ?
+     WHERE id = ?`,
+    [notes || null, id]
+  );
+};
+
+export const deletePrescription = async (id, userId) => {
+  const [result] = await getPool().query(
+    `DELETE FROM prescriptions
+     WHERE id = ? AND user_id = ?`,
+    [id, userId]
+  );
+  
+  return result.affectedRows > 0;
+};
+
+export const markPrescriptionAsUsed = async (userId) => {
+  // Mark all verified prescriptions as expired when order is placed
+  await getPool().query(
+    `UPDATE prescriptions
+     SET status = 'expired'
+     WHERE user_id = ? 
+       AND status IN ('pending', 'verified')
+     ORDER BY uploaded_at DESC
+     LIMIT 1`,
+    [userId]
   );
 };
 

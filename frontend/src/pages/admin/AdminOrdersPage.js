@@ -17,10 +17,18 @@ const AdminOrdersPage = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [modalMode, setModalMode] = useState('view');
   const [editForm, setEditForm] = useState(null);
+  const [userPrescriptions, setUserPrescriptions] = useState([]);
+  const [viewingPrescription, setViewingPrescription] = useState(null);
+  const [loadingPrescriptions, setLoadingPrescriptions] = useState(false);
 
   const loadOrders = useCallback(async () => {
     const response = await adminService.getOrders();
-    setOrders(response.data?.orders || []);
+    const ordersData = response.data?.orders || [];
+    // Debug: Check if requiresPrescription is present
+    if (ordersData.length > 0 && ordersData[0].items) {
+      console.log('Sample order item:', ordersData[0].items[0]);
+    }
+    setOrders(ordersData);
   }, []);
 
   useEffect(() => {
@@ -46,6 +54,26 @@ const AdminOrdersPage = () => {
       await adminService.updateOrderStatus(orderId, status);
       toast.success('Order status updated.');
       await loadOrders();
+      
+      // Trigger prescription reload event if order is completed/delivered
+      if (status === 'completed' || status === 'delivered') {
+        console.log('Order completed/delivered, triggering prescriptionUpdated event');
+        if (typeof window !== 'undefined') {
+          // Multiple events to ensure update
+          setTimeout(() => {
+            console.log('Dispatching prescriptionUpdated event (1s)');
+            window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
+          }, 1000);
+          setTimeout(() => {
+            console.log('Dispatching prescriptionUpdated event (3s)');
+            window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
+          }, 3000);
+          setTimeout(() => {
+            console.log('Dispatching prescriptionUpdated event (5s)');
+            window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
+          }, 5000);
+        }
+      }
     } catch (error) {
       toast.error(error.response?.data?.error?.message || 'Unable to update order.');
     } finally {
@@ -53,9 +81,36 @@ const AdminOrdersPage = () => {
     }
   };
 
+  const loadUserPrescriptions = async (userId) => {
+    if (!userId) return;
+    setLoadingPrescriptions(true);
+    try {
+      const response = await adminService.getPrescriptions({});
+      console.log('All prescriptions from API:', response.data?.prescriptions);
+      // Filter prescriptions for this specific user
+      const userPrescs = (response.data?.prescriptions || []).filter(
+        p => p.userId === userId && p.status !== 'expired'
+      );
+      console.log('Filtered user prescriptions:', userPrescs);
+      console.log('Latest prescription status:', userPrescs[0]?.status);
+      setUserPrescriptions(userPrescs);
+    } catch (error) {
+      console.error('Error loading prescriptions:', error);
+      toast.error('Unable to load prescriptions.');
+    } finally {
+      setLoadingPrescriptions(false);
+    }
+  };
+
   const openOrderModal = (order, mode = 'view') => {
     setSelectedOrder(order);
     setModalMode(mode);
+    
+    // Load user prescriptions when modal opens
+    if (order.customer?.id) {
+      loadUserPrescriptions(order.customer.id);
+    }
+    
     if (mode === 'edit') {
       setEditForm({
         paymentStatus: order.paymentStatus || 'pending',
@@ -68,7 +123,8 @@ const AdminOrdersPage = () => {
           name: item.name,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice
+          totalPrice: item.totalPrice,
+          requiresPrescription: item.requiresPrescription
         }))
       });
     } else {
@@ -80,6 +136,50 @@ const AdminOrdersPage = () => {
     setSelectedOrder(null);
     setModalMode('view');
     setEditForm(null);
+    setUserPrescriptions([]);
+    setViewingPrescription(null);
+  };
+
+  const handleViewPrescription = (prescription) => {
+    setViewingPrescription(prescription);
+  };
+
+  const handleApprovePrescription = async (prescriptionId) => {
+    try {
+      setLoadingPrescriptions(true);
+      await adminService.updatePrescriptionStatus(prescriptionId, {
+        status: 'verified'
+      });
+      toast.success('Prescription approved successfully.');
+      
+      // Reload prescriptions in modal - with delay to ensure backend has updated
+      if (selectedOrder?.customer?.id) {
+        // Immediate reload
+        await loadUserPrescriptions(selectedOrder.customer.id);
+        // Reload again after delay to ensure backend has updated
+        setTimeout(async () => {
+          await loadUserPrescriptions(selectedOrder.customer.id);
+        }, 500);
+        setTimeout(async () => {
+          await loadUserPrescriptions(selectedOrder.customer.id);
+        }, 1500);
+      }
+      
+      // Trigger event to update prescription status everywhere
+      if (typeof window !== 'undefined') {
+        console.log('Prescription approved, triggering prescriptionUpdated event');
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
+        }, 500);
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
+        }, 2000);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error?.message || 'Failed to approve prescription.');
+    } finally {
+      setLoadingPrescriptions(false);
+    }
   };
 
   const handleCancelOrder = (order) => {
@@ -153,7 +253,39 @@ const AdminOrdersPage = () => {
     [orders]
   );
 
-  const lowStockProducts = overview?.alerts?.lowStock || [];
+
+  const derivedTotals = useMemo(() => {
+    if (!selectedOrder) {
+      return { subtotal: 0, tax: 0, shipping: 0, total: 0 };
+    }
+
+    const shipping = selectedOrder.shippingFee || 0;
+
+    if (modalMode === 'edit' && editForm?.items) {
+      const subtotal = editForm.items.reduce((sum, item) => {
+        const quantity = Number(item.quantity) || 0;
+        const price = Number(item.unitPrice) || 0;
+        return sum + price * quantity;
+      }, 0);
+
+      const baselineSubtotal = selectedOrder.subtotalAmount || 0;
+      const baselineTax = selectedOrder.taxAmount || 0;
+      const taxRate = baselineSubtotal > 0 ? baselineTax / baselineSubtotal : 0;
+      const tax = taxRate ? subtotal * taxRate : baselineTax;
+      const total = subtotal + tax + shipping;
+
+      return { subtotal, tax, shipping, total };
+    }
+
+    return {
+      subtotal: selectedOrder.subtotalAmount || 0,
+      tax: selectedOrder.taxAmount || 0,
+      shipping,
+      total:
+        selectedOrder.totalAmount ||
+        (selectedOrder.subtotalAmount || 0) + (selectedOrder.taxAmount || 0) + shipping
+    };
+  }, [selectedOrder, modalMode, editForm]);
 
   const formatCurrency = (value) =>
     new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', minimumFractionDigits: 2 }).format(
@@ -223,41 +355,33 @@ const AdminOrdersPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {(order.items || []).map((item) => (
+                  {(order.items || []).map((item) => {
+                    const needsPrescription = 
+                      item.requiresPrescription === true || 
+                      item.requiresPrescription === 1 || 
+                      item.requires_prescription === true || 
+                      item.requires_prescription === 1 ||
+                      item.requiresPrescription === 'true' ||
+                      item.requires_prescription === 'true';
+                    
+                    return (
                     <tr key={item.id}>
-                      <td>{item.name}</td>
+                        <td>
+                          {item.name}
+                          {needsPrescription && (
+                            <span className="prescription-badge">Prescription Required</span>
+                          )}
+                        </td>
                       <td>{item.quantity}</td>
                       <td>{formatCurrency(item.unitPrice)}</td>
                       <td>{formatCurrency(item.totalPrice)}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           ))
-        )}
-      </section>
-
-      <section className="orders-section">
-        <h2>Low Stock Products</h2>
-        {lowStockProducts.length === 0 ? (
-          <div className="empty-card">No low stock alerts.</div>
-        ) : (
-          <div className="low-stock-grid">
-            {lowStockProducts.slice(0, 6).map((product) => (
-              <div className="low-stock-card" key={product.id}>
-                <h3>{product.name}</h3>
-                <p>Category: {product.category || '—'}</p>
-                <div className="low-stock-meta">
-                  <span>Stock: {product.quantity}</span>
-                  <span>
-                    Expiry:{' '}
-                    {product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : '—'}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
         )}
       </section>
 
@@ -278,7 +402,7 @@ const AdminOrdersPage = () => {
                 <header>
                   <div>
                     <h3>Order #{order.orderNumber}</h3>
-                    <p>Customer: {order.customer?.name || 'Unknown'}</p>
+                    <p>User: {order.customer?.name || 'Unknown'}</p>
                     <p>Email: {order.customer?.email || '—'}</p>
                     <p>Placed on: {order.createdAt ? new Date(order.createdAt).toLocaleString() : '—'}</p>
                   </div>
@@ -309,14 +433,34 @@ const AdminOrdersPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {(order.items || []).map((item) => (
+                        {(order.items || []).map((item) => {
+                          // Debug: Log item data
+                          if (item.name && (item.requiresPrescription || item.requires_prescription)) {
+                            console.log('Item with prescription:', item.name, item);
+                          }
+                          
+                          const needsPrescription = 
+                            item.requiresPrescription === true || 
+                            item.requiresPrescription === 1 || 
+                            item.requires_prescription === true || 
+                            item.requires_prescription === 1 ||
+                            item.requiresPrescription === 'true' ||
+                            item.requires_prescription === 'true';
+                          
+                          return (
                           <tr key={item.id}>
-                            <td>{item.name}</td>
+                              <td>
+                                {item.name}
+                                {needsPrescription && (
+                                  <span className="prescription-badge">Prescription Required</span>
+                                )}
+                              </td>
                             <td>{item.quantity}</td>
                             <td>{formatCurrency(item.unitPrice)}</td>
                             <td>{formatCurrency(item.totalPrice)}</td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -384,10 +528,21 @@ const AdminOrdersPage = () => {
 
             <div className="order-modal__body">
               <div className="order-modal__section">
-                <h4>Customer</h4>
-                <p>{selectedOrder.recipient?.name || selectedOrder.customer?.name}</p>
-                <p>{selectedOrder.recipient?.email || selectedOrder.customer?.email}</p>
-                <p>{selectedOrder.recipient?.phone || selectedOrder.customer?.phone || '—'}</p>
+                <h4>Order details</h4>
+                <div className="user-details-row">
+                  <div className="user-detail">
+                    <span className="user-detail__label">Name</span>
+                    <strong>{selectedOrder.recipient?.name || selectedOrder.customer?.name || '—'}</strong>
+                  </div>
+                  <div className="user-detail">
+                    <span className="user-detail__label">Email</span>
+                    <strong>{selectedOrder.recipient?.email || selectedOrder.customer?.email || '—'}</strong>
+                  </div>
+                  <div className="user-detail">
+                    <span className="user-detail__label">Number</span>
+                    <strong>{selectedOrder.recipient?.phone || selectedOrder.customer?.phone || '—'}</strong>
+                  </div>
+                </div>
               </div>
               <div className="order-modal__section">
                 <h4>Shipping</h4>
@@ -449,9 +604,51 @@ const AdminOrdersPage = () => {
                       const quantity = Number(item.quantity) || 0;
                       const totalAmount =
                         modalMode === 'edit' && editForm ? item.unitPrice * quantity : item.totalPrice;
+                      const needsPrescription = 
+                        item.requiresPrescription === true || 
+                        item.requiresPrescription === 1 || 
+                        item.requires_prescription === true || 
+                        item.requires_prescription === 1 ||
+                        item.requiresPrescription === 'true' ||
+                        item.requires_prescription === 'true';
+                      
+                      const latestPrescription = userPrescriptions.length > 0 ? userPrescriptions[0] : null;
+                      
                       return (
                         <tr key={item.id}>
-                          <td>{item.name}</td>
+                          <td>
+                            <div className="product-name-cell">
+                              <div>
+                                {item.name}
+                                {needsPrescription && (
+                                  <span className={`prescription-badge ${latestPrescription?.status === 'verified' ? 'prescription-approved' : ''}`}>
+                                    {latestPrescription?.status === 'verified' ? '✓ Prescription Approved' : 'Prescription Required'}
+                                  </span>
+                                )}
+                              </div>
+                              {needsPrescription && latestPrescription && modalMode === 'view' && (
+                                <div className="prescription-actions-row">
+                                  <Button
+                                    variant="outline"
+                                    size="small"
+                                    onClick={() => handleViewPrescription(latestPrescription)}
+                                  >
+                                    View Prescription
+                                  </Button>
+                                  {latestPrescription.status === 'pending' && (
+                                    <Button
+                                      variant="primary"
+                                      size="small"
+                                      onClick={() => handleApprovePrescription(latestPrescription.id)}
+                                      disabled={loadingPrescriptions}
+                                    >
+                                      Approve
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </td>
                           <td>
                             {modalMode === 'edit' && editForm ? (
                               <input
@@ -475,19 +672,19 @@ const AdminOrdersPage = () => {
                 <div className="order-modal__totals">
                   <div className="order-modal__totals-row">
                     <span>Subtotal</span>
-                    <strong>{formatCurrency(selectedOrder.subtotalAmount)}</strong>
+                    <strong>{formatCurrency(derivedTotals.subtotal)}</strong>
                   </div>
                   <div className="order-modal__totals-row">
                     <span>Tax</span>
-                    <strong>{formatCurrency(selectedOrder.taxAmount)}</strong>
+                    <strong>{formatCurrency(derivedTotals.tax)}</strong>
                   </div>
                   <div className="order-modal__totals-row">
                     <span>Shipping</span>
-                    <strong>{formatCurrency(selectedOrder.shippingFee)}</strong>
+                    <strong>{formatCurrency(derivedTotals.shipping)}</strong>
                   </div>
                   <div className="order-modal__totals-row total">
                     <span>Total</span>
-                    <strong>{formatCurrency(selectedOrder.totalAmount)}</strong>
+                    <strong>{formatCurrency(derivedTotals.total)}</strong>
                   </div>
                 </div>
               </div>
@@ -555,6 +752,92 @@ const AdminOrdersPage = () => {
                 </Button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* View Prescription Modal */}
+      {viewingPrescription && (
+        <div className="view-prescription-modal-overlay" onClick={() => setViewingPrescription(null)}>
+          <div className="view-prescription-modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="view-prescription-modal-header">
+              <h3>Prescription Details</h3>
+              <button className="modal-close-btn" onClick={() => setViewingPrescription(null)}>×</button>
+            </div>
+            <div className="view-prescription-modal-body">
+              <div className="prescription-view-info">
+                <div className="info-row">
+                  <strong>File Name:</strong>
+                  <span>{viewingPrescription.fileName}</span>
+                </div>
+                <div className="info-row">
+                  <strong>Status:</strong>
+                  <span className={`prescription-status-badge ${viewingPrescription.status}`}>
+                    {viewingPrescription.status}
+                  </span>
+                </div>
+                <div className="info-row">
+                  <strong>Uploaded:</strong>
+                  <span>{new Date(viewingPrescription.uploadedAt).toLocaleString()}</span>
+                </div>
+                {viewingPrescription.notes && (
+                  <div className="info-row">
+                    <strong>Notes:</strong>
+                    <span>{viewingPrescription.notes}</span>
+                  </div>
+                )}
+              </div>
+              <div className="prescription-preview">
+                <div className="prescription-preview-content">
+                  {viewingPrescription.fileMimeType?.startsWith('image/') ? (
+                    <img
+                      src={viewingPrescription.fileUrl}
+                      alt="Prescription"
+                      className="prescription-image"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : (
+                    <iframe
+                      src={viewingPrescription.fileUrl}
+                      title="Prescription Preview"
+                      className="prescription-iframe"
+                      onError={() => {
+                        console.error('Failed to load prescription in iframe');
+                      }}
+                    />
+                  )}
+                  <div className="prescription-fallback" style={{ display: 'none' }}>
+                    <p>Unable to display prescription in preview.</p>
+                    <Button
+                      variant="primary"
+                      onClick={() => {
+                        window.open(viewingPrescription.fileUrl, '_blank');
+                      }}
+                    >
+                      Open in New Tab
+                    </Button>
+                  </div>
+                </div>
+                <div className="preview-actions">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      window.open(viewingPrescription.fileUrl, '_blank');
+                    }}
+                  >
+                    Open in New Tab
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="view-prescription-modal-footer">
+              <Button variant="outline" onClick={() => setViewingPrescription(null)}>
+                Close
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -1,10 +1,11 @@
 import { findUserByEmail, updateUserRole, updateUserVerification, createUser } from '../models/user.model.js';
 import { hashPassword } from './password.js';
 import { logger } from './logger.js';
+import { env } from '../config/env.js';
 
 export const ensureDefaultAdmin = async () => {
-  const email = process.env.DEFAULT_ADMIN_EMAIL;
-  const password = process.env.DEFAULT_ADMIN_PASSWORD;
+  const email = env.defaultAdminEmail;
+  const password = env.defaultAdminPassword;
 
   if (!email || !password) {
     logger.warn(

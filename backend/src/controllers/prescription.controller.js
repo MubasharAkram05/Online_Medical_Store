@@ -1,4 +1,4 @@
-import { createPrescription, getPrescriptionsByUser } from '../models/prescription.model.js';
+import { createPrescription, getPrescriptionsByUser, findPrescriptionById, updatePrescription, deletePrescription } from '../models/prescription.model.js';
 import { logger } from '../utils/logger.js';
 
 const buildFileUrl = (req, filePath) => {
@@ -65,6 +65,86 @@ export const listPrescriptions = async (req, res, next) => {
 
     res.json({
       prescriptions: prescriptions.map((row) => mapPrescriptionResponse(req, row))
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePrescriptionNotes = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    const prescription = await findPrescriptionById(id);
+    if (!prescription) {
+      return res.status(404).json({
+        error: {
+          message: 'Prescription not found'
+        }
+      });
+    }
+
+    if (prescription.user_id !== req.user.id) {
+      return res.status(403).json({
+        error: {
+          message: 'You can only update your own prescriptions'
+        }
+      });
+    }
+
+    await updatePrescription(id, notes);
+
+    const updatedPrescription = await findPrescriptionById(id);
+    
+    res.json({
+      prescription: mapPrescriptionResponse(req, updatedPrescription)
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deletePrescriptionById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const prescription = await findPrescriptionById(id);
+    if (!prescription) {
+      return res.status(404).json({
+        error: {
+          message: 'Prescription not found'
+        }
+      });
+    }
+
+    if (prescription.user_id !== req.user.id) {
+      return res.status(403).json({
+        error: {
+          message: 'You can only delete your own prescriptions'
+        }
+      });
+    }
+
+    const deleted = await deletePrescription(id, req.user.id);
+    if (!deleted) {
+      return res.status(404).json({
+        error: {
+          message: 'Prescription not found'
+        }
+      });
+    }
+
+    logger.info(
+      {
+        userId: req.user.id,
+        prescriptionId: id
+      },
+      'Prescription deleted'
+    );
+
+    res.json({
+      message: 'Prescription deleted successfully'
     });
   } catch (error) {
     next(error);

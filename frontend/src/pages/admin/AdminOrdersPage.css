@@ -352,6 +352,35 @@
   color: #475569;
 }
 
+.user-details-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.user-detail {
+  flex: 1 1 160px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+.user-detail__label {
+  display: block;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  margin-bottom: 0.35rem;
+}
+
+.user-detail strong {
+  font-size: 0.95rem;
+  color: #0f172a;
+  word-break: break-word;
+}
+
 .order-modal__section textarea,
 .order-modal__section input {
   width: 100%;
@@ -508,19 +537,333 @@
   color: #b91c1c;
 }
 
-@media (max-width: 900px) {
+.prescription-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #b91c1c;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  white-space: nowrap;
+}
+
+.prescription-badge.prescription-approved {
+  background: rgba(34, 197, 94, 0.2);
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.product-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.prescription-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* View Prescription Modal Styles */
+.view-prescription-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.view-prescription-modal-container {
+  background: #ffffff;
+  border-radius: 16px;
+  width: min(800px, 95vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.4);
+  overflow: hidden;
+}
+
+.view-prescription-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.view-prescription-modal-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.view-prescription-modal-header .modal-close-btn {
+  background: rgba(15, 23, 42, 0.1);
+  border: none;
+  color: #0f172a;
+  font-size: 1.5rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.view-prescription-modal-header .modal-close-btn:hover {
+  background: rgba(15, 23, 42, 0.2);
+}
+
+.view-prescription-modal-body {
+  padding: 2rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.prescription-view-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.info-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.info-row strong {
+  min-width: 100px;
+  color: #475569;
+}
+
+.info-row span {
+  color: #0f172a;
+}
+
+.prescription-preview {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  min-height: 500px;
+}
+
+.prescription-preview-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  position: relative;
+  min-height: 500px;
+  overflow: auto;
+}
+
+.prescription-iframe {
+  width: 100%;
+  height: 500px;
+  border: none;
+  background: #ffffff;
+  display: block;
+  flex-shrink: 0;
+}
+
+.prescription-image {
+  width: 100%;
+  max-height: 500px;
+  min-height: 400px;
+  object-fit: contain;
+  display: block;
+  background: #ffffff;
+  margin: 0 auto;
+  flex-shrink: 0;
+}
+
+.prescription-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+}
+
+.preview-actions {
+  padding: 1rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: center;
+}
+
+.open-link-btn {
+  padding: 0.5rem 1rem;
+  background: #0f8b7f;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.open-link-btn:hover {
+  background: #059669;
+}
+
+.view-prescription-modal-footer {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  background: #f8fafc;
+}
+
+.prescription-status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.prescription-status-badge.verified {
+  background: rgba(34, 197, 94, 0.2);
+  color: #15803d;
+}
+
+.prescription-status-badge.pending {
+  background: rgba(251, 191, 36, 0.2);
+  color: #b45309;
+}
+
+.prescription-status-badge.rejected {
+  background: rgba(239, 68, 68, 0.2);
+  color: #b91c1c;
+}
+
+.prescription-approved-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+@media (max-width: 1024px) {
+  .admin-orders {
+    padding: 1.5rem;
+  }
+
+  .orders-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .orders-section {
+    padding: 1.5rem;
+  }
+
+  .order-modal__card {
+    width: min(800px, 95vw);
+  }
+
+  .order-modal__header,
+  .order-modal__body,
+  .order-modal__footer {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .low-stock-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-orders {
+    padding: 1rem;
+  }
+
   .orders-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .orders-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .orders-header p {
+    font-size: 0.9rem;
   }
 
   .orders-header__filters {
     width: 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .orders-header__filters select {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.9rem;
+  }
+
+  .orders-section {
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .orders-section h2 {
+    font-size: 1.2rem;
+  }
+
+  .orders-section__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
   }
 
   .order-card header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
+  .order-card header h3 {
+    font-size: 1.1rem;
   }
 
   .order-status {
@@ -529,8 +872,229 @@
     gap: 0.75rem;
   }
 
+  .order-status select {
+    font-size: 0.9rem;
+  }
+
+  .order-body {
+    padding: 1.25rem;
+  }
+
+  .order-table th,
+  .order-table td {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
   .order-summary {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .order-summary .order-actions {
+    flex-direction: column;
+    margin-top: 0.5rem;
+  }
+
+  .order-summary .order-actions button {
+    min-width: auto;
+  }
+
+  .low-stock-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .low-stock-card {
+    padding: 1rem;
+  }
+
+  .order-modal__card {
+    width: min(650px, 95vw);
+    max-height: 95vh;
+  }
+
+  .order-modal__header {
+    padding: 1.25rem 1.5rem;
+  }
+
+  .order-modal__header h3 {
+    font-size: 1.2rem;
+  }
+
+  .order-modal__body {
+    padding: 1.25rem 1.5rem;
+  }
+
+  .order-modal__section h4 {
+    font-size: 1rem;
+  }
+
+  .order-modal__section p {
+    font-size: 0.9rem;
+  }
+
+  .user-details-row {
+    flex-direction: column;
+  }
+
+  .user-detail {
+    flex: 1;
+  }
+
+  .order-modal__section th,
+  .order-modal__section td {
+    padding: 0.5rem 0.3rem;
+    font-size: 0.85rem;
+  }
+
+  .order-modal__footer {
+    padding: 1rem 1.5rem;
+  }
+
+  .order-modal__actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .order-modal__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-orders {
+    padding: 0.75rem;
+  }
+
+  .orders-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .orders-header p {
+    font-size: 0.85rem;
+  }
+
+  .orders-header__filters select {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .orders-section {
+    padding: 1rem;
+  }
+
+  .orders-section h2 {
+    font-size: 1.1rem;
+  }
+
+  .order-card header {
+    padding: 1rem;
+  }
+
+  .order-card header h3 {
+    font-size: 1rem;
+  }
+
+  .cart-total {
+    font-size: 1.1rem;
+  }
+
+  .cart-meta {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    gap: 1rem;
+  }
+
+  .cart-card th,
+  .cart-card td {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+  }
+
+  .order-body {
+    padding: 1rem;
+  }
+
+  .order-table th,
+  .order-table td {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .order-summary {
+    padding: 0.75rem;
+  }
+
+  .order-summary div {
+    font-size: 0.85rem;
+  }
+
+  .low-stock-card {
+    padding: 0.75rem;
+  }
+
+  .low-stock-card h3 {
+    font-size: 0.9rem;
+  }
+
+  .low-stock-meta {
+    font-size: 0.85rem;
+  }
+
+  .order-modal__card {
+    width: min(500px, 95vw);
+  }
+
+  .order-modal__header {
+    padding: 1rem;
+  }
+
+  .order-modal__header h3 {
+    font-size: 1.1rem;
+  }
+
+  .order-modal__body {
+    padding: 1rem;
+  }
+
+  .order-modal__section h4 {
+    font-size: 0.95rem;
+  }
+
+  .order-modal__section p {
+    font-size: 0.85rem;
+  }
+
+  .user-detail {
+    padding: 0.6rem 0.8rem;
+  }
+
+  .user-detail__label {
+    font-size: 0.75rem;
+  }
+
+  .user-detail strong {
+    font-size: 0.9rem;
+  }
+
+  .order-modal__section th,
+  .order-modal__section td {
+    padding: 0.4rem 0.2rem;
+    font-size: 0.8rem;
+  }
+
+  .order-modal__footer {
+    padding: 0.75rem 1rem;
+  }
+
+  .order-modal__totals-row {
+    font-size: 0.85rem;
+  }
+
+  .item-qty-input {
+    width: 60px;
+    font-size: 0.85rem;
   }
 }
 
