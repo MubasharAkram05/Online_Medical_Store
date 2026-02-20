@@ -6,8 +6,8 @@ export const findMedicinesByIds = async (ids) => {
   const placeholders = ids.map(() => '?').join(',');
   const [rows] = await getPool().query(
     `SELECT m.*, s.name AS supplier_name
-     FROM medicines
-     m LEFT JOIN suppliers s ON s.id = m.supplier_id
+     FROM medicines m
+     LEFT JOIN suppliers s ON s.id = m.supplier_id
      WHERE m.id IN (${placeholders})`,
     ids
   );
@@ -62,7 +62,7 @@ export const listMedicines = async ({ search, category, limit }) => {
     params.push(category);
   }
 
-  let query = `SELECT m.*, s.name AS supplier_name
+  let query = `SELECT m.*, s.name AS supplier_name, m.manufacturer
                FROM medicines m
                LEFT JOIN suppliers s ON s.id = m.supplier_id`;
   if (conditions.length) {
@@ -89,15 +89,17 @@ export const createMedicine = async ({
   imageUrl,
   category,
   expiryDate,
+  manufacturingDate,
   supplierId,
   dosageInstructions,
   sideEffects,
+  manufacturer,
   interactionNotes
 }) => {
   const [result] = await getPool().query(
     `INSERT INTO medicines
-      (name, description, price, stock, requires_prescription, image_url, category, expiry_date, supplier_id, dosage_instructions, side_effects, interactions)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (name, description, price, stock, requires_prescription, image_url, manufacturer, category, expiry_date, manufacturing_date, supplier_id, dosage_instructions, side_effects, interactions)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       name,
       description || null,
@@ -105,8 +107,10 @@ export const createMedicine = async ({
       stock ?? 0,
       requiresPrescription ? 1 : 0,
       imageUrl || null,
+      manufacturer || null,
       category || null,
       expiryDate || null,
+      manufacturingDate || null,
       supplierId || null,
       dosageInstructions || null,
       sideEffects || null,
@@ -128,9 +132,11 @@ export const updateMedicine = async (
     imageUrl,
     category,
     expiryDate,
+    manufacturingDate,
     supplierId,
     dosageInstructions,
     sideEffects,
+    manufacturer,
     interactionNotes
   }
 ) => {
@@ -142,8 +148,10 @@ export const updateMedicine = async (
          stock = ?,
          requires_prescription = ?,
          image_url = ?,
+         manufacturer = ?,
          category = ?,
          expiry_date = ?,
+         manufacturing_date = ?,
          supplier_id = ?,
          dosage_instructions = ?,
          side_effects = ?,
@@ -157,8 +165,10 @@ export const updateMedicine = async (
       stock ?? 0,
       requiresPrescription ? 1 : 0,
       imageUrl || null,
+      manufacturer || null,
       category || null,
       expiryDate || null,
+      manufacturingDate || null,
       supplierId || null,
       dosageInstructions || null,
       sideEffects || null,
@@ -179,8 +189,8 @@ export const deleteMedicine = async (id) => {
 export const findLowStockMedicines = async (threshold = 10) => {
   const [rows] = await getPool().query(
     `SELECT m.*, s.name AS supplier_name
-     FROM medicines
-     m LEFT JOIN suppliers s ON s.id = m.supplier_id
+     FROM medicines m
+     LEFT JOIN suppliers s ON s.id = m.supplier_id
      WHERE m.stock <= ?
      ORDER BY m.stock ASC`,
     [threshold]

@@ -16,6 +16,7 @@ import {
   downloadReport,
   adminListUsers,
   adminUpdateUserRole,
+  adminDeleteUser,
   adminListSuppliers,
   adminCreateSupplier,
   adminUpdateSupplier,
@@ -34,62 +35,58 @@ router.get('/overview', getAdminOverview);
 router.get('/medicines', adminListMedicines);
 router.post(
   '/medicines',
+  medicineImageUpload.single('image'),
   [
     body('name').trim().isLength({ min: 2 }).withMessage('Name is required'),
     body('price').isFloat({ min: 0 }).withMessage('Price must be positive'),
     body('stock').isInt({ min: 0 }).withMessage('Stock must be zero or positive'),
     body('expiry_date')
-      .optional({ nullable: true })
+      .optional({ checkFalsy: true })
       .isISO8601()
       .withMessage('Expiry date must be a valid date'),
+    body('manufacturing_date')
+      .optional({ checkFalsy: true })
+      .isISO8601()
+      .withMessage('Manufacturing date must be a valid date'),
+    body('manufacturer')
+      .optional({ checkFalsy: true })
+      .trim()
+      .isLength({ max: 150 })
+      .withMessage('Manufacturer name is too long'),
     body('supplier_id')
-      .optional({ nullable: true })
+      .optional({ checkFalsy: true })
       .isInt({ min: 1 })
       .withMessage('Supplier id must be positive')
   ],
   validateRequest,
-  (req, res, next) => {
-    medicineImageUpload.single('image')(req, res, (err) => {
-      if (err) {
-        return res.status(400).json({
-          error: {
-            message: err.message || 'Failed to upload image'
-          }
-        });
-      }
-      next();
-    });
-  },
   adminCreateMedicine
 );
 router.put(
   '/medicines/:id',
+  medicineImageUpload.single('image'),
   [
     body('name').trim().isLength({ min: 2 }).withMessage('Name is required'),
     body('price').isFloat({ min: 0 }).withMessage('Price must be positive'),
     body('stock').isInt({ min: 0 }).withMessage('Stock must be zero or positive'),
     body('expiry_date')
-      .optional({ nullable: true })
+      .optional({ checkFalsy: true })
       .isISO8601()
       .withMessage('Expiry date must be a valid date'),
+    body('manufacturing_date')
+      .optional({ checkFalsy: true })
+      .isISO8601()
+      .withMessage('Manufacturing date must be a valid date'),
+    body('manufacturer')
+      .optional({ checkFalsy: true })
+      .trim()
+      .isLength({ max: 150 })
+      .withMessage('Manufacturer name is too long'),
     body('supplier_id')
-      .optional({ nullable: true })
+      .optional({ checkFalsy: true })
       .isInt({ min: 1 })
       .withMessage('Supplier id must be positive')
   ],
   validateRequest,
-  (req, res, next) => {
-    medicineImageUpload.single('image')(req, res, (err) => {
-      if (err) {
-        return res.status(400).json({
-          error: {
-            message: err.message || 'Failed to upload image'
-          }
-        });
-      }
-      next();
-    });
-  },
   adminUpdateMedicine
 );
 router.delete('/medicines/:id', adminDeleteMedicine);
@@ -185,6 +182,7 @@ router.patch(
   validateRequest,
   adminUpdateUserRole
 );
+router.delete('/users/:id', adminDeleteUser);
 
 router.get('/suppliers', adminListSuppliers);
 router.post(

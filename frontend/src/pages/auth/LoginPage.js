@@ -21,9 +21,16 @@ const LoginPage = () => {
       localStorage.setItem('token', tokens.accessToken);
       localStorage.setItem('refreshToken', tokens.refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
-      
+
       toast.success('Login successful!');
-      navigate('/');
+
+      // Redirect based on role
+      if (['admin', 'doctor', 'pharmacist'].includes(user.role)) {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/');
+      }
+
       window.location.reload(); // Refresh to update auth state
     } catch (error) {
       toast.error(error.response?.data?.error?.message || 'Login failed. Please check your credentials.');

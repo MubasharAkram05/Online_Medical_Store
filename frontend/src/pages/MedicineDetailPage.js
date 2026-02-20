@@ -63,7 +63,7 @@ const MedicineDetailPage = () => {
         const response = await medicineService.getById(id);
         setMedicine(response.data);
         setInteractionWarnings(response.data.interactionWarnings || []);
-        
+
         // Set dosage info if available in the response
         if (response.data.dosageInstructions) {
           setDosageInfo(prev => ({
@@ -71,10 +71,20 @@ const MedicineDetailPage = () => {
             ...response.data.dosageInstructions
           }));
         }
-        
+
         // Set side effects if available, otherwise fetch them
-        if (response.data.sideEffects && response.data.sideEffects.length > 0) {
-          setSideEffects(response.data.sideEffects);
+        if (response.data.sideEffects) {
+          const effects = Array.isArray(response.data.sideEffects)
+            ? response.data.sideEffects
+            : typeof response.data.sideEffects === 'string'
+              ? response.data.sideEffects.split(',').map(s => s.trim()).filter(Boolean)
+              : [];
+
+          if (effects.length > 0) {
+            setSideEffects(effects);
+          } else {
+            fetchSideEffects(response.data.name);
+          }
         } else {
           fetchSideEffects(response.data.name);
         }
@@ -92,20 +102,20 @@ const MedicineDetailPage = () => {
 
   const loadPrescriptions = React.useCallback(async () => {
     if (!medicine?.requires_prescription) return;
-    
+
     setLoadingPrescriptions(true);
     try {
       const response = await prescriptionService.list();
       console.log('All prescriptions from API:', response.data.prescriptions);
-      
+
       // Filter out expired prescriptions - only show available ones
       const availablePrescriptions = (response.data.prescriptions || []).filter(
         p => p.status !== 'expired' && p.status !== 'rejected'
       );
-      
+
       console.log('Available prescriptions (after filter):', availablePrescriptions);
       console.log('Expired prescriptions count:', (response.data.prescriptions || []).filter(p => p.status === 'expired').length);
-      
+
       setPrescriptions(availablePrescriptions);
     } catch (error) {
       console.error('Error loading prescriptions:', error);
@@ -125,7 +135,7 @@ const MedicineDetailPage = () => {
   useEffect(() => {
     const currentPath = location.pathname;
     const prevPath = prevLocationRef.current;
-    
+
     // If user navigated away and came back, reload prescriptions
     if (prevPath !== currentPath && currentPath.includes('/medicines/') && medicine?.requires_prescription) {
       // Force reload with delay to ensure backend has updated
@@ -133,7 +143,7 @@ const MedicineDetailPage = () => {
         loadPrescriptions();
       }, 1000);
     }
-    
+
     prevLocationRef.current = currentPath;
   }, [location.pathname, medicine?.requires_prescription, loadPrescriptions]);
 
@@ -182,7 +192,7 @@ const MedicineDetailPage = () => {
     window.addEventListener('prescriptionUpdated', handlePrescriptionUpdate);
     window.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
-    
+
     return () => {
       window.removeEventListener('prescriptionUpdated', handlePrescriptionUpdate);
       window.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -192,7 +202,7 @@ const MedicineDetailPage = () => {
 
   const handleAddToCart = () => {
     if (!medicine) return;
-    
+
     if (medicine.requires_prescription) {
       // Check if user has any prescription (pending or verified)
       if (prescriptions.length === 0) {
@@ -232,7 +242,7 @@ const MedicineDetailPage = () => {
 
   const verifiedPrescription = prescriptions.find(p => p.status === 'verified');
   const hasAnyPrescription = prescriptions.length > 0;
-  
+
   // Debug logs
   console.log('Current prescriptions state:', prescriptions);
   console.log('hasAnyPrescription:', hasAnyPrescription);
@@ -287,8 +297,8 @@ const MedicineDetailPage = () => {
 
           <div className="medicine-info-section">
             <h1 className="medicine-title">{medicine.name}</h1>
-            <p className="medicine-brand">Brand: {medicine.brand || 'Generic'}</p>
-            
+            <p className="medicine-manufacturer">Manufacturer: {medicine.manufacturer || 'Generic'}</p>
+
             <div className="medicine-price-section">
               <span className="price-large">PKR {medicine.price?.toFixed(2) || '0.00'}</span>
               <span className="stock-info">
@@ -336,7 +346,7 @@ const MedicineDetailPage = () => {
                 <div className="side-effects-list">
                   <p>Common side effects may include:</p>
                   <ul>
-                    {sideEffects.map((effect, index) => (
+                    {Array.isArray(sideEffects) && sideEffects.map((effect, index) => (
                       <li key={index}>{effect}</li>
                     ))}
                   </ul>
@@ -372,11 +382,19 @@ const MedicineDetailPage = () => {
                 <span className="detail-label">Category:</span>
                 <span className="detail-value">{medicine.category || 'N/A'}</span>
               </div>
-              {medicine.expiry_date && (
+              {medicine.manufacturingDate && (
+                <div className="detail-item">
+                  <span className="detail-label">Manufacturing Date:</span>
+                  <span className="detail-value">
+                    {new Date(medicine.manufacturingDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+              )}
+              {medicine.expiryDate && (
                 <div className="detail-item">
                   <span className="detail-label">Expiry Date:</span>
-                  <span className="detail-value">
-                    {new Date(medicine.expiry_date).toLocaleDateString()}
+                  <span className="detail-value expiry-date">
+                    {new Date(medicine.expiryDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </span>
                 </div>
               )}
@@ -446,7 +464,7 @@ const MedicineDetailPage = () => {
                       </span>
                     </div>
                     <p>
-                      {verifiedPrescription 
+                      {verifiedPrescription
                         ? 'Your prescription has been verified. You can now add this medicine to your cart.'
                         : 'Your prescription has been uploaded and is pending verification. You can proceed with your order, and the pharmacist will verify your prescription during processing. Note: After placing an order, you will need to upload a new prescription for future orders.'}
                     </p>

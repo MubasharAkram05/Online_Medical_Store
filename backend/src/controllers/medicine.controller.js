@@ -98,13 +98,15 @@ const formatMedicineResponse = (medicine) => ({
   stock: medicine.stock,
   requires_prescription: Boolean(medicine.requires_prescription),
   image: medicine.image_url,
+  manufacturer: medicine.manufacturer,
   category: medicine.category,
   expiryDate: medicine.expiry_date,
+  manufacturingDate: medicine.manufacturing_date,
   supplier: medicine.supplier_id
     ? {
-        id: medicine.supplier_id,
-        name: medicine.supplier_name || null
-      }
+      id: medicine.supplier_id,
+      name: medicine.supplier_name || null
+    }
     : null,
   dosageInstructions: medicine.dosage_instructions || '',
   sideEffects: medicine.side_effects || '',

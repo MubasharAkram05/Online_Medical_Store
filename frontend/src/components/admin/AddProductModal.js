@@ -10,12 +10,14 @@ const initialForm = {
   stock: '',
   requires_prescription: false,
   category: '',
+  manufacturer: '',
   image: '',
   imageFile: null,
   dosageInstructions: '',
   sideEffects: '',
   interactionNotes: '',
   expiry_date: '',
+  manufacturing_date: '',
   supplier_id: ''
 };
 
@@ -35,12 +37,14 @@ const AddProductModal = ({ isOpen, onClose, onSave, editingMedicine, suppliers, 
           stock: editingMedicine.stock ?? '',
           requires_prescription: Boolean(editingMedicine.requires_prescription),
           category: editingMedicine.category || '',
+          manufacturer: editingMedicine.manufacturer || '',
           image: editingMedicine.image || '',
           imageFile: null,
           dosageInstructions: editingMedicine.dosageInstructions || '',
           sideEffects: editingMedicine.sideEffects || '',
           interactionNotes: (editingMedicine.interactionNotes || []).join('\n'),
           expiry_date: editingMedicine.expiryDate ? editingMedicine.expiryDate.slice(0, 10) : '',
+          manufacturing_date: editingMedicine.manufacturingDate ? editingMedicine.manufacturingDate.slice(0, 10) : '',
           supplier_id: editingMedicine.supplier?.id || ''
         });
         setImagePreview(editingMedicine.image || null);
@@ -68,7 +72,7 @@ const AddProductModal = ({ isOpen, onClose, onSave, editingMedicine, suppliers, 
       }
 
       setForm((prev) => ({ ...prev, imageFile: file, image: '' }));
-      
+
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -92,7 +96,7 @@ const AddProductModal = ({ isOpen, onClose, onSave, editingMedicine, suppliers, 
 
     try {
       const formData = new FormData();
-      
+
       // Add all form fields
       formData.append('name', form.name);
       formData.append('description', form.description || '');
@@ -100,9 +104,11 @@ const AddProductModal = ({ isOpen, onClose, onSave, editingMedicine, suppliers, 
       formData.append('stock', form.stock);
       formData.append('requires_prescription', form.requires_prescription);
       formData.append('category', form.category || '');
+      formData.append('manufacturer', form.manufacturer || '');
       formData.append('dosageInstructions', form.dosageInstructions || '');
       formData.append('sideEffects', form.sideEffects || '');
       formData.append('expiry_date', form.expiry_date || '');
+      formData.append('manufacturing_date', form.manufacturing_date || '');
       formData.append('supplier_id', form.supplier_id || '');
 
       // Add image: file takes priority over URL
@@ -180,6 +186,15 @@ const AddProductModal = ({ isOpen, onClose, onSave, editingMedicine, suppliers, 
               </datalist>
             </label>
             <label>
+              <span>Manufacturer</span>
+              <input
+                type="text"
+                value={form.manufacturer}
+                onChange={(e) => setForm((prev) => ({ ...prev, manufacturer: e.target.value }))}
+                placeholder="Enter manufacturer/brand"
+              />
+            </label>
+            <label>
               <span>Price (PKR)</span>
               <input
                 type="number"
@@ -213,7 +228,7 @@ const AddProductModal = ({ isOpen, onClose, onSave, editingMedicine, suppliers, 
               />
               <span>Requires Prescription</span>
             </label>
-            
+
             {/* Image Upload Section */}
             <label className="image-upload-field full-width">
               <span>Product Image</span>
@@ -293,6 +308,14 @@ const AddProductModal = ({ isOpen, onClose, onSave, editingMedicine, suppliers, 
                 type="date"
                 value={form.expiry_date}
                 onChange={(e) => setForm((prev) => ({ ...prev, expiry_date: e.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Manufacturing Date</span>
+              <input
+                type="date"
+                value={form.manufacturing_date}
+                onChange={(e) => setForm((prev) => ({ ...prev, manufacturing_date: e.target.value }))}
               />
             </label>
             <label>

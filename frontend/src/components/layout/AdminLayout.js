@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import './AdminLayout.css';
+import Footer from './Footer';
 
 const mainNavLinks = [
   { to: '/', label: 'Home', exact: true, icon: '🏠' },
@@ -21,14 +22,33 @@ const AdminLayout = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
-  const handleGotoStore = () => navigate('/');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const userRole = user.role || 'patient';
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
-    navigate('/admin/login');
+    navigate('/login');
   };
+
+  const filteredMainNavLinks = mainNavLinks.filter(link => {
+    if (userRole === 'admin') return true;
+    // Pharmacists and Doctors only see Dashboard and Orders
+    if (['doctor', 'pharmacist'].includes(userRole)) {
+      return ['Dashboard', 'Order Management'].includes(link.label);
+    }
+    return false;
+  });
+
+  const filteredDropdownLinks = dropdownLinks.filter(link => {
+    if (userRole === 'admin') return true;
+    // Pharmacists and Doctors only see Prescriptions and Settings
+    if (['doctor', 'pharmacist'].includes(userRole)) {
+      return ['Prescriptions', 'Settings'].includes(link.label);
+    }
+    return false;
+  });
 
   useEffect(() => {
     const handleOutside = (event) => {
@@ -42,6 +62,7 @@ const AdminLayout = () => {
 
   return (
     <div className="admin-shell">
+      {/* ... (existing header and content) */}
       <div className="admin-info-bar">
         <div className="admin-info-left">
           <span>📞 Call Us: +92 300 1234567</span>
@@ -52,16 +73,8 @@ const AdminLayout = () => {
 
       <header className="admin-header">
         <div className="admin-brand-block">
-          <div className="admin-brand-icon">
-            <span className="brand-square brand-square--teal" />
-            <span className="brand-square brand-square--pink" />
-            <span className="brand-square brand-square--white" />
-            <span className="brand-square brand-square--red" />
-          </div>
-          <div className="admin-brand-text">
-            <span className="brand-primary">Medical</span>
-            <span className="brand-accent">Store</span>
-          </div>
+          <div className="admin-brand-icon">🏥</div>
+          <div className="admin-brand-text">Medical Store</div>
         </div>
 
         <form
@@ -75,7 +88,7 @@ const AdminLayout = () => {
         </form>
 
         <nav className="admin-main-nav">
-          {mainNavLinks.map((link) => (
+          {filteredMainNavLinks.map((link) => (
             <NavLink key={link.label} to={link.to} end={link.exact}>
               <span className="nav-icon">{link.icon}</span>
               {link.label}
@@ -91,12 +104,12 @@ const AdminLayout = () => {
             className="admin-user-trigger"
             onClick={() => setMenuOpen((prev) => !prev)}
           >
-            Admin User <span className="chip-caret">▾</span>
+            {user.name || 'Professional'} <span className="chip-caret">▾</span>
           </button>
 
           {menuOpen && (
             <div className="admin-user-menu">
-              {dropdownLinks.map((item) => (
+              {filteredDropdownLinks.map((item) => (
                 <button
                   key={item.label}
                   type="button"
@@ -121,50 +134,7 @@ const AdminLayout = () => {
         <Outlet />
       </main>
 
-      <footer className="admin-footer">
-        <div className="admin-footer-grid">
-          <div>
-            <div className="admin-footer-brand">Medical Store</div>
-            <p>Your trusted partner for all your healthcare needs. We provide authentic medicines and healthcare products with fast delivery.</p>
-            <div className="admin-footer-socials">
-              <span>Fb</span>
-              <span>Tw</span>
-              <span>Ig</span>
-              <span>Ln</span>
-            </div>
-          </div>
-          <div>
-            <h4>Quick Links</h4>
-            <ul>
-              <li>Home</li>
-              <li>Products</li>
-              <li>Cart</li>
-              <li>My Orders</li>
-            </ul>
-          </div>
-          <div>
-            <h4>Categories</h4>
-            <ul>
-              <li>Medicines</li>
-              <li>Vitamins</li>
-              <li>Personal Care</li>
-              <li>Baby Care</li>
-            </ul>
-          </div>
-          <div>
-            <h4>Contact Us</h4>
-            <ul className="contact-list">
-              <li>📞 +92 300 1234567</li>
-              <li>✉️ info@medicalstore.com</li>
-              <li>📍 123 Medical Street, Karachi, Pakistan</li>
-              <li>🕘 Mon-Sat: 9AM - 9PM</li>
-            </ul>
-          </div>
-        </div>
-        <div className="admin-footer-bottom">
-          © {new Date().getFullYear()} Online Medical Store. All rights reserved.
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

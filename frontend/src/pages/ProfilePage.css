@@ -29,17 +29,78 @@
   font-size: 1rem;
 }
 
-.profile-badge {
-  width: 72px;
-  height: 72px;
+.profile-image-container {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.profile-image-wrapper {
+  position: relative;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
+  overflow: hidden;
   background: linear-gradient(135deg, #6366f1, #a855f7);
+  box-shadow: 0 10px 25px rgba(79, 70, 229, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
-  color: #fff;
-  box-shadow: 0 10px 25px rgba(79, 70, 229, 0.25);
+}
+
+.profile-placeholder {
+  font-size: 2.5rem;
+  color: white;
+}
+
+.profile-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upload-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.8rem;
+}
+
+.profile-image-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.change-photo-btn {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4f46e5;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.change-photo-btn:hover {
+  color: #3730a3;
+  text-decoration: underline;
+}
+
+.remove-photo-btn {
+  font-size: 0.85rem;
+  color: #ef4444;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.remove-photo-btn:hover {
+  text-decoration: underline;
 }
 
 .profile-grid {
@@ -130,4 +191,3 @@
     font-size: 1.5rem;
   }
 }
-

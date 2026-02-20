@@ -79,6 +79,12 @@
   justify-content: flex-end;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .link-button {
   display: inline-flex;
   align-items: center;
@@ -264,4 +270,3 @@
     font-size: 0.85rem;
   }
 }
-

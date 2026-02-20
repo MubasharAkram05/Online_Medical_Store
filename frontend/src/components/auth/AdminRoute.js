@@ -7,11 +7,13 @@ const AdminRoute = () => {
   const user = userRaw ? JSON.parse(userRaw) : null;
 
   if (!token || !user) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'admin') {
-    return <Navigate to="/admin/login" replace />;
+  // Allow admin, doctor, and pharmacist roles
+  const professionalRoles = ['admin', 'doctor', 'pharmacist'];
+  if (!professionalRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

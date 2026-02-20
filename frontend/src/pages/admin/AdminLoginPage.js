@@ -23,13 +23,14 @@ const AdminLoginPage = () => {
     if (token && userRaw) {
       try {
         const user = JSON.parse(userRaw);
-        if (user.role === 'admin') {
+        const professionalRoles = ['admin', 'doctor', 'pharmacist'];
+        if (professionalRoles.includes(user.role)) {
           navigate('/admin/dashboard', { replace: true });
         } else {
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
-          toast.error('You are not authorized to access the admin panel.');
+          toast.error('You are not authorized to access this panel.');
         }
       } catch (error) {
         localStorage.removeItem('token');
@@ -50,8 +51,9 @@ const AdminLoginPage = () => {
       const response = await authService.login(payload);
       const { tokens, user } = response.data;
 
-      if (user.role !== 'admin') {
-        toast.error('Admin access only. Please contact support for assistance.');
+      const professionalRoles = ['admin', 'doctor', 'pharmacist'];
+      if (!professionalRoles.includes(user.role)) {
+        toast.error('Professional access only. Please contact support for assistance.');
         return;
       }
 

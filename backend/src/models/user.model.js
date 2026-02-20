@@ -6,7 +6,7 @@ export const findUserByEmail = async (email) => {
 };
 
 export const findUserById = async (id) => {
-  const [rows] = await getPool().query('SELECT * FROM users WHERE id = ?', [id]);
+  const [rows] = await getPool().query('SELECT id, name, email, phone, role, profile_pic, is_verified, created_at FROM users WHERE id = ?', [id]);
   return rows[0] || null;
 };
 
@@ -53,7 +53,7 @@ export const updateUserProfile = async (userId, { name, email, phone }) => {
 
 export const getAllUsers = async () => {
   const [rows] = await getPool().query(
-    `SELECT id, name, email, phone, role, is_verified, created_at
+    `SELECT id, name, email, phone, role, profile_pic, is_verified, created_at
      FROM users
      ORDER BY created_at DESC`
   );
@@ -78,4 +78,20 @@ export const updateUserVerification = async (userId, isVerified) => {
     [isVerified ? 1 : 0, userId]
   );
 };
+export const deleteUser = async (userId) => {
+  await getPool().query('DELETE FROM users WHERE id = ?', [userId]);
+};
 
+export const updateProfilePic = async (userId, imageUrl) => {
+  await getPool().query(
+    'UPDATE users SET profile_pic = ?, updated_at = NOW() WHERE id = ?',
+    [imageUrl, userId]
+  );
+};
+
+export const deleteProfilePic = async (userId) => {
+  await getPool().query(
+    'UPDATE users SET profile_pic = NULL, updated_at = NOW() WHERE id = ?',
+    [userId]
+  );
+};

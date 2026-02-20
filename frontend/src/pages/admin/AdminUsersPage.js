@@ -43,6 +43,23 @@ const AdminUsersPage = () => {
     }
   };
 
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setUpdatingId(userId);
+      await adminService.deleteUser(userId);
+      toast.success('User deleted successfully.');
+      await loadUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.error?.message || 'Unable to delete user. They might have existing orders or records.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const filteredUsers = users.filter((user) => (roleFilter ? user.role === roleFilter : true));
 
   if (loading) {
@@ -123,9 +140,19 @@ const AdminUsersPage = () => {
                   </td>
                   <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                   <td className="table-actions">
-                    <Link className="link-button" to={`/orders`}>
-                      View Orders
-                    </Link>
+                    <div className="action-buttons">
+                      <Link className="link-button" to={`/orders?userId=${user.id}`}>
+                        Orders
+                      </Link>
+                      <Button
+                        variant="danger"
+                        size="small"
+                        onClick={() => handleDeleteUser(user.id)}
+                        disabled={updatingId === user.id}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -18,11 +18,11 @@ const AdminDashboardPage = () => {
   const generateReport = async (format) => {
     try {
       setIsGenerating(true);
-      
+
       toast.info(`Generating ${reportType} report in ${format.toUpperCase()} format...`);
-      
+
       const response = await adminService.downloadReport(reportType, format, { days: 7 });
-      
+
       // Create blob URL and trigger download
       const blob = format === 'pdf' ? response.data : new Blob([response.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
@@ -33,9 +33,9 @@ const AdminDashboardPage = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       toast.success(`${reportType} report downloaded successfully!`);
-      
+
     } catch (error) {
       console.error('Error generating report:', error);
       toast.error(`Failed to generate report: ${error.response?.data?.error?.message || error.message}`);
@@ -116,20 +116,23 @@ const AdminDashboardPage = () => {
   // Calculate sales summary
   const salesSummary = salesReport
     ? {
-        totalOrders: salesReport.reduce((sum, day) => sum + (Number(day.orders) || 0), 0),
-        totalRevenue: salesReport.reduce((sum, day) => sum + (Number(day.revenue) || 0), 0),
-        averageDailyRevenue: salesReport.length > 0
-          ? salesReport.reduce((sum, day) => sum + (Number(day.revenue) || 0), 0) / salesReport.length
-          : 0,
-        days: salesReport.length
-      }
+      totalOrders: salesReport.reduce((sum, day) => sum + (Number(day.orders) || 0), 0),
+      totalRevenue: salesReport.reduce((sum, day) => sum + (Number(day.revenue) || 0), 0),
+      averageDailyRevenue: salesReport.length > 0
+        ? salesReport.reduce((sum, day) => sum + (Number(day.revenue) || 0), 0) / salesReport.length
+        : 0,
+      days: salesReport.length
+    }
     : null;
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const userRole = user.role || 'patient';
 
   return (
     <div className="admin-dashboard">
       <div className="admin-dashboard__header">
-        <h1>Admin Dashboard</h1>
-        <p>Monitor store performance and manage your products in one place.</p>
+        <h1>{userRole === 'admin' ? 'Admin Dashboard' : 'Professional Dashboard'}</h1>
+        <p>Monitor store performance and manage your tasks in one place.</p>
       </div>
 
       <div className="admin-dashboard__cards">
@@ -141,14 +144,18 @@ const AdminDashboardPage = () => {
           <span className="summary-label">Total Orders</span>
           <span className="summary-value">{stats.totalOrders}</span>
         </div>
-        <div className="summary-card">
-          <span className="summary-label">Total Revenue</span>
-          <span className="summary-value">{formatCurrency(stats.totalRevenue)}</span>
-        </div>
-        <div className="summary-card">
-          <span className="summary-label">Total Users</span>
-          <span className="summary-value">{stats.totalUsers}</span>
-        </div>
+        {userRole === 'admin' && (
+          <>
+            <div className="summary-card">
+              <span className="summary-label">Total Revenue</span>
+              <span className="summary-value">{formatCurrency(stats.totalRevenue)}</span>
+            </div>
+            <div className="summary-card">
+              <span className="summary-label">Total Users</span>
+              <span className="summary-value">{stats.totalUsers}</span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Reports Section */}
@@ -160,8 +167,8 @@ const AdminDashboardPage = () => {
           </div>
           <div className="report-type-wrapper">
             <label>Select Report Type:</label>
-            <select 
-              value={reportType} 
+            <select
+              value={reportType}
               onChange={(e) => setReportType(e.target.value)}
               className="report-select"
             >
@@ -171,11 +178,11 @@ const AdminDashboardPage = () => {
             </select>
           </div>
         </div>
-        
+
         <div className="report-options">
           <div className="report-actions">
             <div className="download-dropdown-wrapper">
-              <button 
+              <button
                 onClick={() => setShowDownloadDropdown(!showDownloadDropdown)}
                 disabled={isGenerating}
                 className="report-button download-main"

@@ -25,6 +25,7 @@ import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import TermsPage from './pages/TermsPage';
 import AdminRoute from './components/auth/AdminRoute';
+import PrivateRoute from './components/auth/PrivateRoute';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminMedicinesPage from './pages/admin/AdminMedicinesPage';
@@ -46,12 +47,17 @@ function App() {
           <Route path="register" element={<RegisterPage />} />
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
           <Route path="reset-password" element={<ResetPasswordPage />} />
-          <Route path="cart" element={<CartPage />} />
-          <Route path="checkout" element={<CheckoutPage />} />
-          <Route path="prescriptions/upload" element={<PrescriptionUploadPage />} />
-          <Route path="orders" element={<OrdersPage />} />
-          <Route path="orders/:id" element={<OrderDetailPage />} />
-          <Route path="profile" element={<ProfilePage />} />
+
+          {/* Protected User Routes */}
+          <Route element={<PrivateRoute />}>
+            <Route path="cart" element={<CartPage />} />
+            <Route path="checkout" element={<CheckoutPage />} />
+            <Route path="prescriptions/upload" element={<PrescriptionUploadPage />} />
+            <Route path="orders" element={<OrdersPage />} />
+            <Route path="orders/:id" element={<OrderDetailPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+          </Route>
+
           <Route path="terms" element={<TermsPage />} />
         </Route>
         <Route path="/admin">

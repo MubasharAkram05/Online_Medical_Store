@@ -13,6 +13,8 @@ const ProfilePage = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [profilePic, setProfilePic] = useState(null);
+  const [uploadingPic, setUploadingPic] = useState(false);
 
   const {
     register,
@@ -57,6 +59,7 @@ const ProfilePage = () => {
             email: user.email || '',
             phone: user.phone || ''
           });
+          setProfilePic(user.profilePic || null);
         }
       } catch (error) {
         toast.error('Unable to load profile details.');
@@ -105,6 +108,50 @@ const ProfilePage = () => {
     }
   };
 
+  const handleUploadPhoto = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('profilePic', file);
+
+    setUploadingPic(true);
+    try {
+      const response = await authService.updateProfilePic(formData);
+      const newPic = response.data?.profilePic;
+      setProfilePic(newPic);
+
+      // Update local user data
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      userData.profilePic = newPic;
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      toast.success('Profile picture updated successfully.');
+    } catch (error) {
+      toast.error(error.response?.data?.error?.message || 'Unable to upload photo.');
+    } finally {
+      setUploadingPic(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!window.confirm('Are you sure you want to remove your profile picture?')) return;
+
+    try {
+      await authService.deleteProfilePic();
+      setProfilePic(null);
+
+      // Update local user data
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      userData.profilePic = null;
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      toast.success('Profile picture removed.');
+    } catch (error) {
+      toast.error('Unable to remove photo.');
+    }
+  };
+
   if (loadingProfile) {
     return (
       <div className="profile-page">
@@ -123,7 +170,37 @@ const ProfilePage = () => {
             <h1>Account Settings</h1>
             <p>Manage your personal information and security preferences.</p>
           </div>
-          <div className="profile-badge">👤</div>
+          <div className="profile-image-container">
+            <div className="profile-image-wrapper">
+              {profilePic ? (
+                <img src={profilePic} alt="Profile" className="profile-preview" />
+              ) : (
+                <div className="profile-placeholder">👤</div>
+              )}
+              {uploadingPic && <div className="upload-overlay">...</div>}
+            </div>
+            <div className="profile-image-actions">
+              <label className="change-photo-btn">
+                {uploadingPic ? 'Uploading...' : 'Change Photo'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleUploadPhoto}
+                  disabled={uploadingPic}
+                  hidden
+                />
+              </label>
+              {profilePic && (
+                <button
+                  className="remove-photo-btn"
+                  onClick={handleRemovePhoto}
+                  disabled={uploadingPic}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="profile-grid">

@@ -25,16 +25,16 @@ const OrderDetailPage = () => {
         const response = await orderService.getOrderById(id);
         const orderData = response.data?.order || null;
         setOrder(orderData);
-        
+
         console.log('Order loaded:', orderData);
         console.log('Order status:', orderData?.status);
-        
+
         // Check if order has prescription required items
         const hasPrescriptionItems = orderData?.items?.some(
           item => item.requiresPrescription === true || item.requiresPrescription === 1
         );
         console.log('Order has prescription items:', hasPrescriptionItems);
-        
+
         // Trigger prescription reload event if order is completed/delivered
         if (orderData && (orderData.status === 'completed' || orderData.status === 'delivered') && hasPrescriptionItems) {
           console.log('Triggering prescriptionUpdated event for completed order');
@@ -123,14 +123,16 @@ const OrderDetailPage = () => {
             <h2>Order Status</h2>
             <div className="status-section">
               <span className={`status-badge status-${order.status}`}>{order.status}</span>
-              <span className={`status-badge payment-${order.payment?.status || (order.paymentMethod === 'cod' ? 'pending' : 'completed')}`}>
-                {order.payment?.status || (order.paymentMethod === 'cod' ? 'pending' : 'completed')}
-              </span>
             </div>
             <div className="status-meta">
               <div>
                 <span className="label">Payment Method</span>
-                <span className="value">{order.paymentMethod.toUpperCase()}</span>
+                <span className="value" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  {order.paymentMethod.toUpperCase()}
+                  <span className={`status-badge payment-${order.payment?.status || (order.paymentMethod === 'cod' ? 'pending' : 'completed')}`} style={{ padding: '0.2rem 0.7rem', fontSize: '0.75rem', height: 'fit-content' }}>
+                    {order.payment?.status || (order.paymentMethod === 'cod' ? 'pending' : 'completed')}
+                  </span>
+                </span>
               </div>
               <div>
                 <span className="label">Prescription</span>

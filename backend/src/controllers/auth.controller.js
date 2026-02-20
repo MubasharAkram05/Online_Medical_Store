@@ -4,7 +4,9 @@ import {
   findUserById,
   createUser,
   updateUserPassword,
-  updateUserProfile
+  updateUserProfile,
+  updateProfilePic,
+  deleteProfilePic
 } from '../models/user.model.js';
 import {
   createPasswordResetToken,
@@ -15,6 +17,11 @@ import { hashPassword, comparePassword } from '../utils/password.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 import { generateResetToken, hashToken } from '../utils/token.js';
 import { logger } from '../utils/logger.js';
+import { sendPasswordResetEmail } from '../services/email.service.js';
+
+const buildFileUrl = (req, filePath) => {
+  return `${req.protocol}://${req.get('host')}/uploads/${filePath.replace(/\\/g, '/')}`;
+};
 
 export const register = async (req, res, next) => {
   try {
@@ -65,6 +72,7 @@ export const register = async (req, res, next) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        profilePic: user.profile_pic,
         isVerified: Boolean(user.is_verified)
       },
       tokens: {
@@ -117,6 +125,7 @@ export const login = async (req, res, next) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        profilePic: user.profile_pic,
         isVerified: Boolean(user.is_verified)
       },
       tokens: {
@@ -156,6 +165,9 @@ export const requestPasswordReset = async (req, res, next) => {
       { email: user.email, resetLink },
       'Password reset link generated'
     );
+
+    // Send the actual email
+    await sendPasswordResetEmail(user.email, resetLink);
 
     res.json({
       message: 'If an account with that email exists, a reset link has been sent.',
@@ -212,6 +224,7 @@ export const getProfile = async (req, res, next) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        profilePic: user.profile_pic,
         isVerified: Boolean(user.is_verified),
         createdAt: user.created_at
       }
@@ -265,6 +278,7 @@ export const updateProfile = async (req, res, next) => {
         email,
         phone,
         role: user.role,
+        profilePic: user.profile_pic,
         isVerified: Boolean(user.is_verified)
       },
       message: 'Profile updated successfully.'
@@ -301,6 +315,35 @@ export const changePassword = async (req, res, next) => {
 
     res.json({
       message: 'Password updated successfully.'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProfilePicture = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: { message: 'Please upload an image' } });
+    }
+
+    const imageUrl = buildFileUrl(req, `profiles/${req.file.filename}`);
+    await updateProfilePic(req.user.id, imageUrl);
+
+    res.json({
+      profilePic: imageUrl,
+      message: 'Profile picture updated successfully.'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteProfilePicture = async (req, res, next) => {
+  try {
+    await deleteProfilePic(req.user.id);
+    res.json({
+      message: 'Profile picture removed successfully.'
     });
   } catch (error) {
     next(error);

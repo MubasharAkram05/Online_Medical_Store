@@ -58,50 +58,21 @@
 }
 
 .logo-icon {
-  width: 44px;
-  height: 44px;
-  border: 2px solid #0f8b7f;
-  border-radius: 10px;
-  padding: 4px;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 4px;
-  background: #fff;
-}
-
-.logo-square {
-  border-radius: 4px;
-}
-
-.logo-square.teal {
-  background: #0f8b7f;
-}
-
-.logo-square.accent {
-  background: #0fb19f;
-}
-
-.logo-square.light {
-  border: 2px solid #0f8b7f;
-}
-
-.logo-square.red {
-  background: #f87171;
+  font-size: 28px;
+  background: linear-gradient(135deg, #0f8b7f, #2dd4bf);
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  padding: 0;
 }
 
 .logo-text {
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
-  display: flex;
-  gap: 6px;
-}
-
-.logo-medical {
-  color: #111827;
-}
-
-.logo-store {
   color: #0f8b7f;
 }
 
@@ -194,22 +165,56 @@
   border: 1px solid #e2e8f0;
   border-radius: 999px;
   background: #fff;
-  padding: 8px 14px;
+  padding: 2px 12px 2px 2px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  color: #111827;
+  gap: 0;
+  font-weight: 500;
+  color: #1a202c;
   cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.user-trigger:hover {
+  background: #f8fafc;
+  border-color: #0f8b7f;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 139, 127, 0.1);
+}
+
+.user-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
 }
 
 .user-icon {
-  font-size: 16px;
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border-radius: 50%;
+  color: #64748b;
+  margin-right: 4px;
+}
+
+.header-profile-pic {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #0f8b7f;
+  box-shadow: 0 2px 4px rgba(15, 139, 127, 0.15);
+  margin-right: 4px;
 }
 
 .caret {
-  font-size: 12px;
-  color: #6b7280;
+  font-size: 24px;
+  color: #4b5563;
 }
 
 .user-dropdown {
@@ -287,4 +292,3 @@
     gap: 12px;
   }
 }
-

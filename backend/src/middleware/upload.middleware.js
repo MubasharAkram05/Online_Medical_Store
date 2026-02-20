@@ -5,9 +5,11 @@ import fs from 'fs';
 const uploadRoot = path.join(process.cwd(), 'uploads');
 const prescriptionDir = path.join(uploadRoot, 'prescriptions');
 const medicineImageDir = path.join(uploadRoot, 'medicines');
+const profilePicDir = path.join(uploadRoot, 'profiles');
 
 fs.mkdirSync(prescriptionDir, { recursive: true });
 fs.mkdirSync(medicineImageDir, { recursive: true });
+fs.mkdirSync(profilePicDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: prescriptionDir,
@@ -63,6 +65,22 @@ export const medicineImageUpload = multer({
   fileFilter: imageFileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB
+  }
+});
+
+export const profilePicUpload = multer({
+  storage: multer.diskStorage({
+    destination: profilePicDir,
+    filename: (req, file, cb) => {
+      const timestamp = Date.now();
+      const random = Math.round(Math.random() * 1e9);
+      const ext = path.extname(file.originalname);
+      cb(null, `profile-${req.user?.id || 'unknown'}-${timestamp}${ext}`);
+    }
+  }),
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 2 * 1024 * 1024 // 2MB for profile pics
   }
 });
 

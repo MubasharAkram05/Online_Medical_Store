@@ -41,6 +41,7 @@ export const adminService = {
   },
   getUsers: () => api.get('/admin/users'),
   updateUserRole: (id, data) => api.patch(`/admin/users/${id}/role`, data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
   getSuppliers: () => api.get('/admin/suppliers'),
   createSupplier: (data) => api.post('/admin/suppliers', data),
   updateSupplier: (id, data) => api.put(`/admin/suppliers/${id}`, data),

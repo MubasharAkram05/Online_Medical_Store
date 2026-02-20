@@ -63,16 +63,8 @@ const Header = () => {
           <nav className="navbar">
             {/* Logo */}
             <Link to="/" className="logo">
-              <div className="logo-icon">
-                <span className="logo-square teal" />
-                <span className="logo-square accent" />
-                <span className="logo-square light" />
-                <span className="logo-square red" />
-              </div>
-              <div className="logo-text">
-                <span className="logo-medical">Medical</span>
-                <span className="logo-store">Store</span>
-              </div>
+              <div className="logo-icon">🏥</div>
+              <div className="logo-text">Medical Store</div>
             </Link>
 
             {/* Search Bar */}
@@ -100,8 +92,8 @@ const Header = () => {
               </Link>
               {isLoggedIn ? (
                 <>
-                  {user?.role === 'admin' && (
-                    <Link to="/admin/dashboard" className="nav-link">Admin</Link>
+                  {['admin', 'doctor', 'pharmacist'].includes(user?.role) && (
+                    <Link to="/admin/dashboard" className="nav-link">Dashboard</Link>
                   )}
                   <Link to="/orders" className="nav-link">Orders</Link>
                   <div
@@ -121,7 +113,11 @@ const Header = () => {
                       className="user-trigger"
                       onClick={() => setUserMenuOpen((prev) => !prev)}
                     >
-                      <span className="user-icon">👤</span>
+                      {user?.profilePic ? (
+                        <img src={user.profilePic} alt="Profile" className="header-profile-pic" />
+                      ) : (
+                        <span className="user-icon">👤</span>
+                      )}
                       <span className="user-name">{user?.name || 'Account'}</span>
                       <span className="caret">▾</span>
                     </button>

@@ -29,7 +29,8 @@ import {
   getAllUsers,
   updateUserRole,
   updateUserVerification,
-  findUserById
+  findUserById,
+  deleteUser
 } from '../models/user.model.js';
 import {
   listSuppliers,
@@ -61,13 +62,15 @@ const formatMedicineResponse = (medicine) => ({
   stock: medicine.stock,
   requires_prescription: Boolean(medicine.requires_prescription),
   image: medicine.image_url,
+  manufacturer: medicine.manufacturer,
   category: medicine.category,
   expiryDate: medicine.expiry_date,
+  manufacturingDate: medicine.manufacturing_date,
   supplier: medicine.supplier_id
     ? {
-        id: medicine.supplier_id,
-        name: medicine.supplier_name || null
-      }
+      id: medicine.supplier_id,
+      name: medicine.supplier_name || null
+    }
     : null,
   dosageInstructions: medicine.dosage_instructions || '',
   sideEffects: medicine.side_effects || '',
@@ -208,8 +211,10 @@ export const adminCreateMedicine = async (req, res, next) => {
       stock: req.body.stock,
       requiresPrescription: req.body.requires_prescription,
       imageUrl: imageUrl,
+      manufacturer: req.body.manufacturer,
       category: req.body.category,
       expiryDate: req.body.expiry_date,
+      manufacturingDate: req.body.manufacturing_date,
       supplierId: req.body.supplier_id,
       dosageInstructions: req.body.dosageInstructions,
       sideEffects: req.body.sideEffects,
@@ -280,8 +285,10 @@ export const adminUpdateMedicine = async (req, res, next) => {
       stock: req.body.stock,
       requiresPrescription: req.body.requires_prescription,
       imageUrl: imageUrl,
+      manufacturer: req.body.manufacturer,
       category: req.body.category,
       expiryDate: req.body.expiry_date,
+      manufacturingDate: req.body.manufacturing_date,
       supplierId: req.body.supplier_id,
       dosageInstructions: req.body.dosageInstructions,
       sideEffects: req.body.sideEffects,
@@ -401,14 +408,14 @@ export const adminUpdateOrderStatus = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const newStatus = req.body.status;
-    
+
     // Get order data before updating to check if prescription is required
     const orderDataBefore = await getOrderWithItemsAdmin(id);
     const requiresPrescription = orderDataBefore?.items?.some(
       item => item.requires_prescription === 1 || item.requires_prescription === true
     );
     const userId = orderDataBefore?.order?.user_id;
-    
+
     await updateOrderStatus(id, newStatus);
 
     // If order is completed/delivered and requires prescription, expire the prescription
@@ -423,6 +430,15 @@ export const adminUpdateOrderStatus = async (req, res, next) => {
         [userId]
       );
       console.log(`Prescription expired for user ${userId} after order ${id} status changed to ${newStatus}. Affected rows: ${updateResult.affectedRows}`);
+    }
+
+    // If order is delivered and it's COD, mark payment as completed
+    if (newStatus === 'delivered' && orderDataBefore?.order?.payment_method === 'cod') {
+      await updatePaymentStatusForOrder(id, 'completed', {
+        method: 'cod',
+        amount: orderDataBefore.order.total_amount
+      });
+      console.log(`Payment marked as completed for COD order ${id} after status changed to delivered.`);
     }
 
     const orderData = await getOrderWithItemsAdmin(id);
@@ -784,6 +800,43 @@ export const adminUpdateUserRole = async (req, res, next) => {
       message: 'User updated successfully.'
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+export const adminDeleteUser = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const user = await findUserById(id);
+    if (!user) {
+      return res.status(404).json({
+        error: {
+          message: 'User not found'
+        }
+      });
+    }
+
+    // Protection for last admin or self-deletion could be added here
+    if (user.role === 'admin' && req.user.id === id) {
+      return res.status(400).json({
+        error: {
+          message: 'You cannot delete your own admin account.'
+        }
+      });
+    }
+
+    await deleteUser(id);
+    res.json({
+      message: 'User deleted successfully.'
+    });
+  } catch (error) {
+    if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(400).json({
+        error: {
+          message: 'Cannot delete user because they have associated records (orders, prescriptions, etc.).'
+        }
+      });
+    }
     next(error);
   }
 };

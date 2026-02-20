@@ -243,6 +243,7 @@ const AdminMedicinesPage = () => {
               <tr key={medicine.id}>
                 <td>
                   <div className="table-title">{medicine.name}</div>
+                  <div className="table-subtitle">Mfr: {medicine.manufacturer || '—'}</div>
                   <div className="table-subtitle">{medicine.description || '—'}</div>
                 </td>
                 <td>

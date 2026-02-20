@@ -63,7 +63,7 @@
   margin: 0;
 }
 
-.medicine-brand {
+.medicine-manufacturer {
   font-size: 16px;
   color: var(--text-light);
   margin: -12px 0 0 0;
@@ -546,4 +546,3 @@
     font-size: 28px;
   }
 }
-

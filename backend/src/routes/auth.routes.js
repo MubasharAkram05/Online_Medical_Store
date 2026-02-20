@@ -7,10 +7,13 @@ import {
   resetPassword,
   getProfile,
   updateProfile,
-  changePassword
+  changePassword,
+  updateProfilePicture,
+  deleteProfilePicture
 } from '../controllers/auth.controller.js';
 import { validateRequest } from '../middleware/validate.js';
 import { authenticate } from '../middleware/auth.middleware.js';
+import { profilePicUpload } from '../middleware/upload.middleware.js';
 
 const router = Router();
 
@@ -125,6 +128,15 @@ router.put(
   validateRequest,
   changePassword
 );
+
+router.patch(
+  '/profile-pic',
+  authenticate,
+  profilePicUpload.single('profilePic'),
+  updateProfilePicture
+);
+
+router.delete('/profile-pic', authenticate, deleteProfilePicture);
 
 export default router;
 
