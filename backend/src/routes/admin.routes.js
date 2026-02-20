@@ -56,7 +56,8 @@ router.post(
     body('supplier_id')
       .optional({ checkFalsy: true })
       .isInt({ min: 1 })
-      .withMessage('Supplier id must be positive')
+      .withMessage('Supplier id must be positive'),
+    body('requires_prescription').optional().toBoolean()
   ],
   validateRequest,
   adminCreateMedicine
@@ -84,7 +85,8 @@ router.put(
     body('supplier_id')
       .optional({ checkFalsy: true })
       .isInt({ min: 1 })
-      .withMessage('Supplier id must be positive')
+      .withMessage('Supplier id must be positive'),
+    body('requires_prescription').optional().toBoolean()
   ],
   validateRequest,
   adminUpdateMedicine

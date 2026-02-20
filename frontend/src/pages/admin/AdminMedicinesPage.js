@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import AddProductModal from '../../components/admin/AddProductModal';
 import { adminService } from '../../services/adminService';
@@ -13,27 +12,51 @@ const AdminMedicinesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState(null);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [sortBy, setSortBy] = useState('relevance');
   const [suppliers, setSuppliers] = useState([]);
-  const [stockUpdatingId, setStockUpdatingId] = useState(null);
-  const location = useLocation();
   const navigate = useNavigate();
 
   const filteredMedicines = useMemo(() => {
-    if (!search.trim()) return medicines;
-    return medicines.filter((medicine) =>
-      medicine.name.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [medicines, search]);
+    let result = [...medicines];
+
+    // Category Tabs Filtering
+    if (categoryFilter === 'Prescription') {
+      result = result.filter(m => m.requires_prescription);
+    } else if (categoryFilter === 'OTC') {
+      result = result.filter(m => !m.requires_prescription && m.category === 'Medicines');
+    } else if (categoryFilter === 'Wellness') {
+      const wellnessCats = ['Baby Care', 'Personal Care', 'Vitamins & Supplements', 'First Aid'];
+      result = result.filter(m => wellnessCats.includes(m.category));
+    }
+
+    // Search Filtering
+    if (search.trim()) {
+      const query = search.toLowerCase();
+      result = result.filter(m =>
+        m.name.toLowerCase().includes(query) ||
+        (m.manufacturer || '').toLowerCase().includes(query) ||
+        (m.category || '').toLowerCase().includes(query)
+      );
+    }
+
+    // Sorting
+    if (sortBy === 'price-low') {
+      result.sort((a, b) => a.price - b.price);
+    } else if (sortBy === 'price-high') {
+      result.sort((a, b) => b.price - a.price);
+    } else if (sortBy === 'stock-low') {
+      result.sort((a, b) => a.stock - b.stock);
+    }
+
+    return result;
+  }, [medicines, search, categoryFilter, sortBy]);
 
   const categorySuggestions = useMemo(() => {
     const values = medicines
       .map((medicine) => (medicine.category || '').trim())
       .filter(Boolean);
     return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
-  }, [medicines]);
-
-  const lowStockProducts = useMemo(() => {
-    return medicines.filter((medicine) => medicine.stock <= 5);
   }, [medicines]);
 
   const loadMedicines = async () => {
@@ -48,29 +71,6 @@ const AdminMedicinesPage = () => {
     }
   };
 
-  useEffect(() => {
-    const load = async () => {
-      await Promise.all([loadMedicines(), loadSuppliers()]);
-    };
-
-    load();
-  }, []);
-
-  useEffect(() => {
-    if (!medicines.length) return;
-
-    const state = location.state || {};
-    if (state.editId) {
-      const medicine = medicines.find((item) => item.id === state.editId);
-      if (medicine) {
-        handleEdit(medicine);
-      }
-      navigate('/admin/medicines', { replace: true, state: {} });
-    } else if (state.deleteId) {
-      handleDelete(state.deleteId);
-      navigate('/admin/medicines', { replace: true, state: {} });
-    }
-  }, [location.state, medicines, navigate]);
   const loadSuppliers = async () => {
     try {
       const response = await adminService.getSuppliers();
@@ -79,6 +79,13 @@ const AdminMedicinesPage = () => {
       toast.error('Unable to load suppliers.');
     }
   };
+
+  useEffect(() => {
+    const load = async () => {
+      await Promise.all([loadMedicines(), loadSuppliers()]);
+    };
+    load();
+  }, []);
 
   const handleOpenModal = () => {
     setEditingMedicine(null);
@@ -101,7 +108,7 @@ const AdminMedicinesPage = () => {
       }
       await loadMedicines();
     } catch (error) {
-      throw error; // Re-throw to let modal handle the error display
+      throw error;
     }
   };
 
@@ -121,45 +128,6 @@ const AdminMedicinesPage = () => {
     }
   };
 
-  const handleStockAdjust = async (id, direction) => {
-    if (stockUpdatingId === id) return;
-    const isDecrease = direction === 'decrease';
-    if (isDecrease) {
-      const current = medicines.find((item) => item.id === id);
-      if (!current || current.stock <= 0) {
-        toast.info('Stock is already at zero.');
-        return;
-      }
-    }
-
-    try {
-      setStockUpdatingId(id);
-      const response = await adminService.adjustMedicineStock(id, {
-        direction,
-        amount: 1
-      });
-      const updated = response.data?.medicine;
-      if (updated) {
-        setMedicines((prev) =>
-          prev.map((item) => (item.id === updated.id ? updated : item))
-        );
-        if (editingId === updated.id) {
-          setForm((prev) => ({
-            ...prev,
-            stock: updated.stock
-          }));
-        }
-      }
-      toast.success(
-        `Stock ${direction === 'increase' ? 'increased' : 'decreased'} successfully.`
-      );
-    } catch (error) {
-      toast.error(error.response?.data?.error?.message || 'Unable to update stock.');
-    } finally {
-      setStockUpdatingId(null);
-    }
-  };
-
   if (loading) {
     return (
       <div className="admin-section">
@@ -171,132 +139,157 @@ const AdminMedicinesPage = () => {
   return (
     <div className="admin-section">
       <div className="section-header">
-        <div>
-          <h1>Product Management</h1>
-          <p>Maintain inventory, update pricing, and track expiry dates.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <h1>Products</h1>
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
           <Button variant="primary" onClick={handleOpenModal}>
             Add Product
           </Button>
-          <Link className="link-button" to="/admin/suppliers">
+          <Button variant="outline" onClick={() => navigate('/admin/suppliers')}>
             Manage Suppliers
-          </Link>
+          </Button>
         </div>
       </div>
 
-      {/* Low Stock Products Section */}
-      {lowStockProducts.length > 0 && (
-        <Card className="admin-form-card">
-          <h2>Low Stock Products</h2>
-          <div className="low-stock-grid">
-            {lowStockProducts.slice(0, 6).map((product) => (
-              <div className="low-stock-card" key={product.id}>
-                <div className="low-stock-card-header">
-                  <h4>{product.name}</h4>
-                </div>
-                <div className="low-stock-card-body">
-                  <p className="low-stock-category">Category: {product.category || '—'}</p>
-                  <div className="low-stock-meta">
-                    <span className="low-stock-label">Stock:</span>
-                    <span className="low-stock-value">{product.stock}</span>
-                    <span className="low-stock-expiry">
-                      Expiry: {product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : '—'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
+      <div className="category-filters">
+        <div
+          className={`category-card ${categoryFilter === 'All' ? 'active' : ''}`}
+          onClick={() => setCategoryFilter('All')}
+        >
+          <div className="category-icon">📦</div>
+          <div className="category-info">
+            <h3>All Products</h3>
+            <p>Browse the full catalogue</p>
           </div>
-        </Card>
-      )}
+        </div>
+        <div
+          className={`category-card ${categoryFilter === 'Prescription' ? 'active' : ''}`}
+          onClick={() => setCategoryFilter('Prescription')}
+        >
+          <div className="category-icon">💊</div>
+          <div className="category-info">
+            <h3>Prescription Drugs</h3>
+            <p>Requires doctor approval</p>
+          </div>
+        </div>
+        <div
+          className={`category-card ${categoryFilter === 'OTC' ? 'active' : ''}`}
+          onClick={() => setCategoryFilter('OTC')}
+        >
+          <div className="category-icon">🛒</div>
+          <div className="category-info">
+            <h3>OTC Essentials</h3>
+            <p>No prescription needed</p>
+          </div>
+        </div>
+        <div
+          className={`category-card ${categoryFilter === 'Wellness' ? 'active' : ''}`}
+          onClick={() => setCategoryFilter('Wellness')}
+        >
+          <div className="category-icon">🍃</div>
+          <div className="category-info">
+            <h3>Wellness & Care</h3>
+            <p>Vitamins, supplements & personal care</p>
+          </div>
+        </div>
+      </div>
 
-      <Card className="admin-table-card">
-        <div className="card-header">
-          <div>
-            <h2>Catalogue Overview</h2>
-            <p>{filteredMedicines.length} products</p>
-          </div>
+      <div className="search-filter-bar">
+        <div className="search-wrapper">
           <input
-            type="search"
-            placeholder="Search products..."
+            type="text"
+            placeholder="Search by medicine, brand, or category..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="search-input"
           />
+          <button className="search-btn">🔍</button>
         </div>
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Stock</th>
-              <th>Price</th>
-              <th>Category</th>
-              <th>Expiry</th>
-              <th>Supplier</th>
-              <th>Requires Rx</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredMedicines.map((medicine) => (
-              <tr key={medicine.id}>
-                <td>
-                  <div className="table-title">{medicine.name}</div>
-                  <div className="table-subtitle">Mfr: {medicine.manufacturer || '—'}</div>
-                  <div className="table-subtitle">{medicine.description || '—'}</div>
-                </td>
-                <td>
-                  <div className="stock-cell">
-                    <span className="stock-value">{medicine.stock}</span>
-                    <div className="stock-actions">
-                      <button
-                        type="button"
-                        className="stock-button"
-                        onClick={() => handleStockAdjust(medicine.id, 'decrease')}
-                        disabled={stockUpdatingId === medicine.id || medicine.stock === 0}
-                        title="Decrease stock"
-                      >
-                        −
-                      </button>
-                      <button
-                        type="button"
-                        className="stock-button"
-                        onClick={() => handleStockAdjust(medicine.id, 'increase')}
-                        disabled={stockUpdatingId === medicine.id}
-                        title="Increase stock"
-                      >
-                        +
-                      </button>
+        <select
+          className="filter-select"
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          value={categoryFilter}
+        >
+          <option value="All">All Categories</option>
+          <option value="Medicines">Medicines</option>
+          <option value="Medical Devices">Medical Devices</option>
+          <option value="Baby Care">Baby Care</option>
+          <option value="Personal Care">Personal Care</option>
+          <option value="Vitamins & Supplements">Vitamins & Supplements</option>
+          <option value="First Aid">First Aid</option>
+        </select>
+        <select
+          className="filter-select"
+          onChange={(e) => setSortBy(e.target.value)}
+          value={sortBy}
+        >
+          <option value="relevance">Relevance</option>
+          <option value="price-low">Price: Low to High</option>
+          <option value="price-high">Price: High to Low</option>
+          <option value="stock-low">Stock: Low to High</option>
+        </select>
+      </div>
+
+      <div className="product-grid">
+        {filteredMedicines.length > 0 ? (
+          filteredMedicines.map((medicine) => (
+            <div className="product-management-card" key={medicine.id}>
+              <div className="card-image-wrapper">
+                {medicine.image ? (
+                  <img src={medicine.image} alt={medicine.name} />
+                ) : (
+                  <div className="image-placeholder">No Image Available</div>
+                )}
+                {medicine.requires_prescription && (
+                  <div className="rx-badge">℞ Prescription Required</div>
+                )}
+              </div>
+              <div className="card-content">
+                <h2>{medicine.name}</h2>
+                <div className="manufacturer-name">{medicine.manufacturer || 'General Medicine'}</div>
+                <p className="product-snippet">
+                  {medicine.description || 'No description available for this product.'}
+                </p>
+
+                <div className="card-footer">
+                  <div className="price-stock-row">
+                    <div className="price-display">
+                      <span className="price-currency">PKR</span>
+                      {Number(medicine.price).toFixed(2)}
                     </div>
+                    <div className="stock-pill">Stock: {medicine.stock}</div>
                   </div>
-                </td>
-                <td>PKR {Number(medicine.price).toFixed(2)}</td>
-                <td>{medicine.category || '—'}</td>
-                <td>{medicine.expiryDate ? new Date(medicine.expiryDate).toLocaleDateString() : '—'}</td>
-                <td>{medicine.supplier?.name || '—'}</td>
-                <td>{medicine.requires_prescription ? 'Yes' : 'No'}</td>
-                <td className="table-actions">
-                  <Button
-                    variant="outline"
-                    size="small"
-                    onClick={() => handleEdit(medicine)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="small"
-                    onClick={() => handleDelete(medicine.id)}
-                  >
-                    Delete
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+
+                  <div className="action-buttons">
+                    <button
+                      className="action-btn view"
+                      onClick={() => navigate(`/medicines/${medicine.id}`)}
+                    >
+                      View
+                    </button>
+                    <button
+                      className="action-btn edit"
+                      onClick={() => handleEdit(medicine)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="action-btn delete"
+                      onClick={() => handleDelete(medicine.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="no-results">
+            <h3>No products found</h3>
+            <p>Try adjusting your search or filters to find what you're looking for.</p>
+          </div>
+        )}
+      </div>
 
       <AddProductModal
         isOpen={isModalOpen}
