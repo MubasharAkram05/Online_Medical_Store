@@ -69,7 +69,7 @@ export const listMedicines = async ({ search, category, limit }) => {
     query += ` WHERE ${conditions.join(' AND ')}`;
   }
 
-  query += ' ORDER BY m.created_at DESC';
+  query += ' ORDER BY m.sort_order ASC, m.created_at DESC';
 
   if (limit) {
     query += ' LIMIT ?';
@@ -96,10 +96,13 @@ export const createMedicine = async ({
   manufacturer,
   interactionNotes
 }) => {
+  const [maxOrderResult] = await getPool().query('SELECT IFNULL(MAX(sort_order), 0) AS maxOrder FROM medicines');
+  const nextOrder = maxOrderResult[0].maxOrder + 1;
+
   const [result] = await getPool().query(
     `INSERT INTO medicines
-      (name, description, price, stock, requires_prescription, image_url, manufacturer, category, expiry_date, manufacturing_date, supplier_id, dosage_instructions, side_effects, interactions)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (name, description, price, stock, requires_prescription, image_url, manufacturer, category, expiry_date, manufacturing_date, supplier_id, dosage_instructions, side_effects, interactions, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       name,
       description || null,
@@ -114,7 +117,8 @@ export const createMedicine = async ({
       supplierId || null,
       dosageInstructions || null,
       sideEffects || null,
-      interactionNotes ? JSON.stringify(interactionNotes) : null
+      interactionNotes ? JSON.stringify(interactionNotes) : null,
+      nextOrder
     ]
   );
 
@@ -179,11 +183,35 @@ export const updateMedicine = async (
 };
 
 export const deleteMedicine = async (id) => {
-  await getPool().query(
-    `DELETE FROM medicines
-     WHERE id = ?`,
-    [id]
-  );
+  const pool = getPool();
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // Get the sort_order of the medicine being deleted
+    const [medicine] = await connection.query('SELECT sort_order FROM medicines WHERE id = ?', [id]);
+
+    if (medicine && medicine.length > 0) {
+      const deletedOrder = medicine[0].sort_order;
+
+      // Delete the medicine
+      await connection.query('DELETE FROM medicines WHERE id = ?', [id]);
+
+      // Shift back all products after this specific position
+      await connection.query(
+        'UPDATE medicines SET sort_order = sort_order - 1 WHERE sort_order > ?',
+        [deletedOrder]
+      );
+    }
+
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 };
 
 export const findLowStockMedicines = async (threshold = 10) => {

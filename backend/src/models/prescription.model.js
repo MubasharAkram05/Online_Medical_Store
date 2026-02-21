@@ -2,6 +2,7 @@ import { getPool } from '../config/database.js';
 
 export const createPrescription = async ({
   userId,
+  medicineId,
   filePath,
   fileOriginalName,
   fileMimeType,
@@ -10,9 +11,9 @@ export const createPrescription = async ({
 }) => {
   const [result] = await getPool().query(
     `INSERT INTO prescriptions
-      (user_id, file_path, file_original_name, file_mime_type, file_size, notes)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [userId, filePath, fileOriginalName, fileMimeType, fileSize, notes || null]
+      (user_id, medicine_id, file_path, file_original_name, file_mime_type, file_size, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [userId, medicineId || null, filePath, fileOriginalName, fileMimeType, fileSize, notes || null]
   );
 
   return result.insertId;
@@ -29,15 +30,18 @@ export const findPrescriptionById = async (id) => {
   return rows[0] || null;
 };
 
-export const getPrescriptionsByUser = async (userId) => {
-  const [rows] = await getPool().query(
-    `SELECT *
-     FROM prescriptions
-     WHERE user_id = ?
-     ORDER BY uploaded_at DESC`,
-    [userId]
-  );
+export const getPrescriptionsByUser = async (userId, medicineId = null) => {
+  let query = `SELECT * FROM prescriptions WHERE user_id = ?`;
+  const params = [userId];
 
+  if (medicineId) {
+    query += ` AND medicine_id = ?`;
+    params.push(medicineId);
+  }
+
+  query += ` ORDER BY uploaded_at DESC`;
+
+  const [rows] = await getPool().query(query, params);
   return rows;
 };
 
@@ -120,7 +124,7 @@ export const deletePrescription = async (id, userId) => {
      WHERE id = ? AND user_id = ?`,
     [id, userId]
   );
-  
+
   return result.affectedRows > 0;
 };
 

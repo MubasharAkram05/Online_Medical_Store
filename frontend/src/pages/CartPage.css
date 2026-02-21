@@ -342,6 +342,93 @@
   }
 }
 
+.order-rx-card {
+  margin-bottom: 24px;
+  padding: 24px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.order-rx-card.warning-border {
+  border-left: 5px solid #f59e0b;
+  background: #fffbeb;
+}
+
+.order-rx-card.success {
+  border-left: 5px solid #10b981;
+  background: #f0fdf4;
+}
+
+.rx-card-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+.rx-card-text {
+  flex: 1;
+}
+
+.rx-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.rx-icon {
+  font-size: 24px;
+}
+
+.rx-card-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.rx-card-text p {
+  margin: 0 0 16px 0;
+  font-size: 0.95rem;
+  color: #4b5563;
+}
+
+.order-rx-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-badge {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-badge.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.verified {
+  background: #dcfce7;
+  color: #065f46;
+}
+
+.rx-required-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #dc2626;
+  background: #fee2e2;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
 @media (max-width: 768px) {
   .cart-item {
     grid-template-columns: 100px 1fr;
@@ -359,4 +446,3 @@
     height: 100px;
   }
 }
-

@@ -4,7 +4,8 @@ import { getPool } from '../config/database.js';
 import { findMedicinesByIds, decrementMedicineStock } from '../models/medicine.model.js';
 import { createOrder, createOrderItems, getOrdersByUser, getOrderWithItems } from '../models/order.model.js';
 import { hasAnyPrescription, hasVerifiedPrescription, markPrescriptionAsUsed } from '../models/prescription.model.js';
-import { createPayment } from '../models/payment.model.js';
+import { createPayment, updatePaymentProof } from '../models/payment.model.js';
+
 import { findInteractionPairs } from '../models/interaction.model.js';
 import { buildInteractionWarnings } from '../utils/interactions.js';
 import { generateInvoicePDF } from '../utils/invoicePdf.js';
@@ -32,16 +33,16 @@ const buildOrderResponse = (order, items, payment) => ({
   createdAt: order.created_at,
   payment: payment
     ? {
-        id: payment.id,
-        status: payment.status,
-        amount: Number(payment.amount),
-        method: payment.method,
-        transactionId: payment.transaction_id,
-        reference: payment.reference,
-        receiptUrl: payment.receipt_url,
-        capturedAt: payment.captured_at,
-        createdAt: payment.created_at
-      }
+      id: payment.id,
+      status: payment.status,
+      amount: Number(payment.amount),
+      method: payment.method,
+      transactionId: payment.transaction_id,
+      reference: payment.reference,
+      receiptUrl: payment.receipt_url,
+      capturedAt: payment.captured_at,
+      createdAt: payment.created_at
+    }
     : null,
   items: items.map((item) => ({
     id: item.id,
@@ -51,6 +52,11 @@ const buildOrderResponse = (order, items, payment) => ({
     unitPrice: Number(item.unit_price),
     totalPrice: Number(item.total_price),
     requiresPrescription: Boolean(item.requires_prescription),
+    prescriptionId: item.prescription_id,
+    prescriptionStatus: item.prescription_status,
+    prescriptionNotes: item.prescription_notes,
+    prescriptionPath: item.prescription_path,
+    prescriptionName: item.prescription_name,
     imageUrl: item.image_url
   }))
 });
@@ -82,7 +88,7 @@ export const checkout = async (req, res, next) => {
     city,
     postalCode
   } = req.body;
-const paymentDetails = req.body.payment || {};
+  const paymentDetails = req.body.payment || {};
 
   if (!items || !items.length) {
     return res.status(400).json({
@@ -108,13 +114,53 @@ const paymentDetails = req.body.payment || {};
     }
 
     const medicinesMap = new Map(medicines.map((med) => [med.id, med]));
+    const orderPrescriptionId = req.body.prescription_id;
+    const requiresAnyPrescription = medicines.some(med => Number(med.requires_prescription));
+
+    // 3. Prescription Validation
+    const prescriptionIssues = [];
+    let hasPendingPrescription = false;
+
+    if (requiresAnyPrescription) {
+      if (!orderPrescriptionId) {
+        prescriptionIssues.push('A prescription is required for this order.');
+      } else {
+        const [prescriptions] = await getPool().query(
+          `SELECT id, status, medicine_id FROM prescriptions WHERE id = ? AND user_id = ?`,
+          [orderPrescriptionId, req.user.id]
+        );
+
+        if (!prescriptions.length) {
+          prescriptionIssues.push('Invalid or unauthorized prescription.');
+        } else {
+          const p = prescriptions[0];
+          if (p.status === 'expired') {
+            prescriptionIssues.push('The provided prescription has expired.');
+          } else if (p.status === 'rejected') {
+            prescriptionIssues.push('The provided prescription was previously rejected.');
+          } else {
+            // Valid prescription for the order
+            hasPendingPrescription = p.status !== 'verified';
+          }
+        }
+      }
+    }
+
+    if (prescriptionIssues.length > 0) {
+      return res.status(400).json({
+        error: {
+          message: 'Prescription validation failed',
+          details: prescriptionIssues
+        }
+      });
+    }
 
     const orderItems = items.map((item) => {
       const medicine = medicinesMap.get(item.medicine_id);
       const quantity = Number(item.quantity) || 1;
 
       if (quantity <= 0) {
-        const error = new Error('Invalid quantity for item');
+        const error = new Error(`Invalid quantity for ${medicine?.name || 'item'}`);
         error.status = 400;
         throw error;
       }
@@ -132,23 +178,18 @@ const paymentDetails = req.body.payment || {};
         quantity,
         unitPrice,
         totalPrice: unitPrice * quantity,
-        requiresPrescription: Boolean(medicine.requires_prescription)
+        requiresPrescription: Boolean(medicine.requires_prescription),
+        prescriptionId: medicine.requires_prescription ? orderPrescriptionId : null
       };
     });
 
-    const requiresPrescription = orderItems.some((item) => item.requiresPrescription);
-    let prescriptionVerifiedFlag = false;
-
-    if (requiresPrescription) {
-      const hasPrescription = await hasAnyPrescription(req.user.id);
-      if (!hasPrescription) {
-        return res.status(400).json({
-          error: {
-            message: 'Prescription required. Please upload a prescription before placing this order.'
-          }
-        });
-      }
-      prescriptionVerifiedFlag = await hasVerifiedPrescription(req.user.id);
+    if (prescriptionIssues.length > 0) {
+      return res.status(400).json({
+        error: {
+          message: 'Prescription validation failed',
+          details: prescriptionIssues
+        }
+      });
     }
 
     const interactionRows = await findInteractionPairs(medicineIds);
@@ -176,13 +217,14 @@ const paymentDetails = req.body.payment || {};
       const orderId = await createOrder(connection, {
         userId: req.user.id,
         orderNumber: generateOrderNumber(),
+        status: hasPendingPrescription ? 'pending_prescription' : 'pending',
         paymentMethod,
         priority,
         subtotal,
         tax,
         shipping,
         total,
-        prescriptionVerified: prescriptionVerifiedFlag,
+        prescriptionVerified: !hasPendingPrescription,
         fullName,
         email,
         phone,
@@ -194,21 +236,16 @@ const paymentDetails = req.body.payment || {};
       await createOrderItems(connection, orderId, orderItems);
       await decrementMedicineStock(connection, orderItems);
 
-      // Mark prescription as expired after order is placed
-      if (requiresPrescription) {
-        const [updateResult] = await connection.query(
-          `UPDATE prescriptions
-           SET status = 'expired'
-           WHERE user_id = ? 
-             AND status IN ('pending', 'verified')
-           ORDER BY uploaded_at DESC
-           LIMIT 1`,
-          [req.user.id]
-        );
-        console.log(`Prescription expired for user ${req.user.id} after order ${orderId}. Affected rows: ${updateResult.affectedRows}`);
+      // We DON'T mark prescriptions as expired anymore to allow reuse.
+      // Re-verification is handled per-order in order_items.
+
+      let paymentStatus = 'pending';
+      if (paymentMethod === 'card') {
+        paymentStatus = 'completed';
+      } else if (paymentMethod === 'cod') {
+        paymentStatus = 'pending';
       }
 
-      const paymentStatus = paymentMethod === 'cod' ? 'pending' : 'completed';
       const capturedAt = paymentStatus === 'completed' ? new Date() : null;
 
       await createPayment(connection, {
@@ -228,9 +265,7 @@ const paymentDetails = req.body.payment || {};
 
       res.status(201).json({
         order: buildOrderResponse(order, orderItemRows, payment),
-        message: prescriptionVerifiedFlag
-          ? 'Order placed successfully.'
-          : 'Order placed and pending prescription verification.',
+        message: 'Order placed successfully.',
         warnings: interactionWarnings
       });
     } catch (error) {
@@ -333,17 +368,17 @@ export const downloadInvoice = async (req, res, next) => {
       },
       payment: payment
         ? {
-            method: payment.method,
-            status: payment.status,
-            amount: Number(payment.amount),
-            transactionId: payment.transaction_id,
-            reference: payment.reference
-          }
+          method: payment.method,
+          status: payment.status,
+          amount: Number(payment.amount),
+          transactionId: payment.transaction_id,
+          reference: payment.reference
+        }
         : {
-            method: order.payment_method,
-            status: order.payment_method === 'cod' ? 'pending' : 'completed',
-            amount: Number(order.total_amount)
-          },
+          method: order.payment_method,
+          status: order.payment_method === 'cod' ? 'pending' : 'completed',
+          amount: Number(order.total_amount)
+        },
       items: items.map((item) => ({
         name: item.name,
         quantity: item.quantity,
@@ -364,6 +399,39 @@ export const downloadInvoice = async (req, res, next) => {
       `attachment; filename=invoice-${order.order_number}.pdf`
     );
     generateInvoicePDF(invoice, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadPaymentProof = async (req, res, next) => {
+  try {
+    const orderId = Number(req.params.id);
+    if (!orderId) {
+      return res.status(400).json({ error: { message: 'Invalid order id' } });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: { message: 'No proof file provided' } });
+    }
+
+    // Check if order exists and belongs to user
+    const data = await getOrderWithItems(req.user.id, orderId);
+    if (!data) {
+      return res.status(404).json({ error: { message: 'Order not found' } });
+    }
+
+    const receiptUrl = `/uploads/payments/${req.file.filename}`;
+    const success = await updatePaymentProof(orderId, receiptUrl);
+
+    if (!success) {
+      return res.status(500).json({ error: { message: 'Failed to update payment proof' } });
+    }
+
+    res.json({
+      message: 'Payment proof uploaded successfully',
+      receiptUrl
+    });
   } catch (error) {
     next(error);
   }

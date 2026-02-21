@@ -8,6 +8,10 @@ import { medicineService } from '../services/medicineService';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import PrescriptionModal from '../components/prescription/PrescriptionModal';
+import PaymentMethodSelector from '../components/payment/PaymentMethodSelector';
+import CardPaymentForm from '../components/payment/CardPaymentForm';
+import BankTransferForm from '../components/payment/BankTransferForm';
+import WalletPaymentForm from '../components/payment/WalletPaymentForm';
 import './CheckoutPage.css';
 
 const DEFAULT_SHIPPING_VALUES = {
@@ -43,7 +47,7 @@ const resolveShippingStorageKey = () => {
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { cartItems, getCartTotal, clearCart, removeUnavailableItems } = useCart();
+  const { cartItems, orderPrescription, getCartTotal, clearCart, removeUnavailableItems } = useCart();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [priority, setPriority] = useState('normal');
@@ -52,6 +56,7 @@ const CheckoutPage = () => {
     reference: '',
     receiptUrl: ''
   });
+
   const [shippingStorageKey, setShippingStorageKey] = useState(() => {
     if (typeof window === 'undefined') {
       return 'shipping_guest';
@@ -59,9 +64,6 @@ const CheckoutPage = () => {
     return resolveShippingStorageKey();
   });
   const [shippingInitialized, setShippingInitialized] = useState(false);
-  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
-  const [selectedPrescription, setSelectedPrescription] = useState(null);
-  const [medicinesRequiringPrescription, setMedicinesRequiringPrescription] = useState([]);
 
   const {
     register,
@@ -178,29 +180,6 @@ const CheckoutPage = () => {
     return () => window.clearTimeout(handler);
   }, [watchedShipping, shippingStorageKey, shippingInitialized]);
 
-  useEffect(() => {
-    const checkPrescriptionRequirements = async () => {
-      if (!cartItems.length) return;
-
-      try {
-        const medicineIds = cartItems.map(item => item.id);
-        const response = await medicineService.getMedicinesByIds(medicineIds);
-        const medicines = response.data.medicines || [];
-        
-        const requiringPrescription = medicines.filter(medicine => 
-          medicine.requires_prescription && 
-          cartItems.some(item => item.id === medicine.id)
-        );
-
-        setMedicinesRequiringPrescription(requiringPrescription);
-      } catch (error) {
-        console.error('Error checking prescription requirements:', error);
-      }
-    };
-
-    checkPrescriptionRequirements();
-  }, [cartItems]);
-
   const subtotal = getCartTotal();
   const shipping = 200;
   const tax = subtotal * 0.05;
@@ -208,18 +187,27 @@ const CheckoutPage = () => {
 
   const handlePaymentMethodChange = (value) => {
     setPaymentMethod(value);
-    if (value === 'cod') {
-      setPaymentDetails({
-        transactionId: '',
-        reference: '',
-        receiptUrl: ''
-      });
-    }
+    setPaymentDetails({
+      transactionId: '',
+      reference: '',
+      receiptUrl: '',
+      cardNumber: '',
+      expiryDate: '',
+      cvv: '',
+      cardName: '',
+      phone: ''
+    });
   };
 
+  const handlePaymentDetailChange = (key, value) => {
+    setPaymentDetails(prev => ({ ...prev, [key]: value }));
+  };
+
+  const requiresPrescription = cartItems.some(item => item.requires_prescription);
+
   const onSubmit = async (data) => {
-    if (medicinesRequiringPrescription.length > 0 && !selectedPrescription) {
-      setShowPrescriptionModal(true);
+    if (requiresPrescription && !orderPrescription) {
+      toast.error('A physical prescription is required for this order.');
       return;
     }
 
@@ -228,9 +216,24 @@ const CheckoutPage = () => {
       return;
     }
 
-    if (paymentMethod !== 'cod' && !paymentDetails.transactionId.trim()) {
-      toast.error('Please provide the payment transaction ID.');
-      return;
+    if (paymentMethod === 'card') {
+      if (!paymentDetails.cardNumber || !paymentDetails.expiryDate || !paymentDetails.cvv || !paymentDetails.cardName) {
+        toast.error('Please complete all card details.');
+        return;
+      }
+      if (paymentDetails.cardNumber.replace(/\s/g, '').length < 16) {
+        toast.error('Invalid card number.');
+        return;
+      }
+    } else if (paymentMethod !== 'cod') {
+      if (!paymentDetails.transactionId.trim()) {
+        toast.error('Please provide the transaction ID for your payment.');
+        return;
+      }
+      if (!paymentDetails.proofFile) {
+        toast.error('Please upload a proof of payment screenshot.');
+        return;
+      }
     }
 
     setLoading(true);
@@ -242,68 +245,41 @@ const CheckoutPage = () => {
           console.error('Error persisting shipping info to localStorage:', error);
         }
       }
-
       const orderData = {
         ...data,
         payment_method: paymentMethod,
         priority,
+        prescription_id: orderPrescription?.id,
         items: cartItems.map((item) => ({
           medicine_id: item.id,
           quantity: item.quantity,
           price: item.price
         })),
         total_amount: total,
-        prescription_id: selectedPrescription?.id,
         payment: paymentMethod === 'cod'
           ? undefined
-          : Object.fromEntries(
-              Object.entries(paymentDetails)
-                .map(([key, value]) => [key, value.trim()])
-                .filter(([, value]) => value)
-            )
+          : {
+            ...paymentDetails,
+            transactionId: paymentMethod === 'card'
+              ? `CARD-MOCK-${Date.now()}`
+              : paymentDetails.transactionId.trim()
+          }
       };
 
       const response = await orderService.createOrder(orderData);
+
+      if (paymentDetails.proofFile) {
+        const formData = new FormData();
+        formData.append('proof', paymentDetails.proofFile);
+        await orderService.uploadPaymentProof(response.data.order.id, formData);
+      }
+
       toast.success(response.data?.message || 'Order placed successfully!');
-
-      if (response.data?.warnings?.length) {
-        response.data.warnings.forEach((warning) => {
-          toast.warning(
-            warning.description ||
-              `${warning.medicines?.map((med) => med.name).join(' and ')} may interact.`
-          );
-        });
-      }
-
       clearCart();
-      
-      // Trigger prescription reload event for medicine detail pages
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
-      }
-      
       navigate(`/orders/${response.data.order.id}`);
     } catch (error) {
-      const message =
-        error.response?.data?.error?.message ||
-        'Failed to place order. Please try again.';
+      const message = error.response?.data?.error?.message || 'Failed to place order.';
       toast.error(message);
-
-      const missingMedicineIds = error.response?.data?.error?.missingMedicineIds;
-      if (Array.isArray(missingMedicineIds) && missingMedicineIds.length) {
-        removeUnavailableItems(missingMedicineIds);
-        toast.info('Removed unavailable items from your cart. Please review and try again.');
-      }
-
-      const details = error.response?.data?.error?.details;
-      if (Array.isArray(details) && details.length) {
-        details.forEach((warning) => {
-          toast.error(
-            warning.description ||
-              `${warning.medicines?.map((med) => med.name).join(' and ')} may interact.`
-          );
-        });
-      }
     } finally {
       setLoading(false);
     }
@@ -315,7 +291,6 @@ const CheckoutPage = () => {
         <div className="container">
           <div className="empty-checkout">
             <h2>Your cart is empty</h2>
-            <p>Add items to your cart before checkout.</p>
             <Button variant="primary" onClick={() => navigate('/medicines')}>
               Continue Shopping
             </Button>
@@ -460,120 +435,30 @@ const CheckoutPage = () => {
 
                 <Card className="checkout-section">
                   <h2>Payment Method</h2>
-                  <div className="payment-methods">
-                    <label className="payment-option">
-                      <input
-                        type="radio"
-                        value="cod"
-                        checked={paymentMethod === 'cod'}
-                        onChange={(e) => handlePaymentMethodChange(e.target.value)}
-                      />
-                      <div className="payment-option-content">
-                        <span className="payment-icon">💵</span>
-                        <div>
-                          <strong>Cash on Delivery</strong>
-                          <p>Pay when you receive your order</p>
-                        </div>
-                      </div>
-                    </label>
+                  <PaymentMethodSelector
+                    selectedMethod={paymentMethod}
+                    onSelect={handlePaymentMethodChange}
+                  />
 
-                    <label className="payment-option">
-                      <input
-                        type="radio"
-                        value="card"
-                        checked={paymentMethod === 'card'}
-                        onChange={(e) => handlePaymentMethodChange(e.target.value)}
-                      />
-                      <div className="payment-option-content">
-                        <span className="payment-icon">💳</span>
-                        <div>
-                          <strong>Credit/Debit Card</strong>
-                          <p>Pay securely with your card</p>
-                        </div>
-                      </div>
-                    </label>
+                  {paymentMethod === 'card' && (
+                    <CardPaymentForm
+                      details={paymentDetails}
+                      onChange={handlePaymentDetailChange}
+                    />
+                  )}
 
-                    <label className="payment-option">
-                      <input
-                        type="radio"
-                        value="bank"
-                        checked={paymentMethod === 'bank'}
-                        onChange={(e) => handlePaymentMethodChange(e.target.value)}
-                      />
-                      <div className="payment-option-content">
-                        <span className="payment-icon">🏦</span>
-                        <div>
-                          <strong>Bank Transfer</strong>
-                          <p>Transfer directly to our bank account</p>
-                        </div>
-                      </div>
-                    </label>
+                  {paymentMethod === 'bank' && (
+                    <BankTransferForm
+                      details={paymentDetails}
+                      onChange={handlePaymentDetailChange}
+                    />
+                  )}
 
-                    <label className="payment-option">
-                      <input
-                        type="radio"
-                        value="wallet"
-                        checked={paymentMethod === 'wallet'}
-                        onChange={(e) => handlePaymentMethodChange(e.target.value)}
-                      />
-                      <div className="payment-option-content">
-                        <span className="payment-icon">📱</span>
-                        <div>
-                          <strong>Mobile Wallet</strong>
-                          <p>Use your preferred mobile wallet</p>
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-
-                  {paymentMethod !== 'cod' && (
-                    <div className="payment-extra">
-                      <div className="form-group">
-                        <label htmlFor="transactionId">Transaction ID *</label>
-                        <input
-                          id="transactionId"
-                          value={paymentDetails.transactionId}
-                          onChange={(e) =>
-                            setPaymentDetails((prev) => ({
-                              ...prev,
-                              transactionId: e.target.value
-                            }))
-                          }
-                          placeholder="Enter provider transaction/reference ID"
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label htmlFor="paymentReference">Payment Reference</label>
-                        <input
-                          id="paymentReference"
-                          value={paymentDetails.reference}
-                          onChange={(e) =>
-                            setPaymentDetails((prev) => ({
-                              ...prev,
-                              reference: e.target.value
-                            }))
-                          }
-                          placeholder="Optional notes or reference number"
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label htmlFor="receiptUrl">Receipt URL</label>
-                        <input
-                          id="receiptUrl"
-                          type="url"
-                          value={paymentDetails.receiptUrl}
-                          onChange={(e) =>
-                            setPaymentDetails((prev) => ({
-                              ...prev,
-                              receiptUrl: e.target.value
-                            }))
-                          }
-                          placeholder="Link to receipt screenshot"
-                        />
-                      </div>
-                    </div>
+                  {paymentMethod === 'wallet' && (
+                    <WalletPaymentForm
+                      details={paymentDetails}
+                      onChange={handlePaymentDetailChange}
+                    />
                   )}
                 </Card>
               </div>
@@ -584,17 +469,33 @@ const CheckoutPage = () => {
 
                   <div className="order-items">
                     {cartItems.map((item) => (
-                      <div key={item.id} className="order-item">
-                        <div className="order-item-info">
-                          <span className="order-item-name">{item.name}</span>
-                          <span className="order-item-qty">Qty: {item.quantity}</span>
+                      <div key={item.id} className="order-item-container">
+                        <div className="order-item">
+                          <div className="order-item-info">
+                            <span className="order-item-name">{item.name} {item.requires_prescription && <span className="rx-label-small">Rx</span>}</span>
+                            <span className="order-item-qty">Qty: {item.quantity}</span>
+                          </div>
+                          <span className="order-item-price">
+                            PKR {(item.price * item.quantity).toFixed(2)}
+                          </span>
                         </div>
-                        <span className="order-item-price">
-                          PKR {(item.price * item.quantity).toFixed(2)}
-                        </span>
                       </div>
                     ))}
                   </div>
+
+                  {requiresPrescription && (
+                    <div className="order-rx-summary">
+                      <div className="summary-divider"></div>
+                      <div className="rx-summary-box">
+                        <span className="label">Order Prescription:</span>
+                        {orderPrescription ? (
+                          <span className="value success">✅ {orderPrescription.fileName}</span>
+                        ) : (
+                          <span className="value error">❌ Missing!</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="summary-divider"></div>
 
@@ -618,28 +519,17 @@ const CheckoutPage = () => {
                     <span>PKR {total.toFixed(2)}</span>
                   </div>
 
-                  {selectedPrescription && (
-                    <div className="selected-prescription-info">
-                      <span className="prescription-label">Prescription:</span>
-                      <span className="prescription-name">{selectedPrescription.fileName}</span>
-                    </div>
-                  )}
-
                   <Button
                     type="submit"
                     variant="primary"
                     size="large"
                     className="place-order-button"
-                    disabled={loading}
+                    disabled={loading || (requiresPrescription && !orderPrescription)}
                   >
                     {loading ? 'Placing Order...' : 'Place Order'}
                   </Button>
 
-                  <button
-                    type="button"
-                    onClick={() => navigate('/cart')}
-                    className="back-to-cart"
-                  >
+                  <button type="button" onClick={() => navigate('/cart')} className="back-to-cart">
                     ← Back to Cart
                   </button>
                 </Card>
@@ -648,13 +538,6 @@ const CheckoutPage = () => {
           </form>
         </div>
       </div>
-
-      <PrescriptionModal
-        isOpen={showPrescriptionModal}
-        onClose={() => setShowPrescriptionModal(false)}
-        onPrescriptionSelect={setSelectedPrescription}
-        medicinesRequiringPrescription={medicinesRequiringPrescription}
-      />
     </>
   );
 };

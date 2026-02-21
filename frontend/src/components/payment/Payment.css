@@ -1,0 +1,240 @@
+.payment-methods-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.payment-method-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 18px;
+    border: 2px solid #edf2f7;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.payment-method-card:hover {
+    border-color: #cbd5e0;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.payment-method-card.active {
+    border-color: #3182ce;
+    background: linear-gradient(to bottom right, #ebf8ff, #ffffff);
+    box-shadow: 0 10px 15px -3px rgba(49, 130, 206, 0.1);
+}
+
+.payment-radio {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.payment-method-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.payment-method-icon {
+    font-size: 1.6rem;
+    background: #f7fafc;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+}
+
+.payment-method-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.payment-method-label {
+    font-weight: 700;
+    color: #1a202c;
+    font-size: 1.05rem;
+}
+
+.payment-method-description {
+    font-size: 0.85rem;
+    color: #4a5568;
+}
+
+.selected-badge {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #3182ce;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+    border: 3px solid white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.payment-form-container {
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    margin-top: 10px;
+}
+
+.payment-form-container h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    color: #2d3748;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.payment-form-container .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.file-upload-container {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.file-upload-wrapper {
+    position: relative;
+    border: 2px dashed #b1c7ee;
+    padding: 2rem 1rem;
+    border-radius: 12px;
+    background: #f8fafc;
+    transition: all 0.2s ease;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 140px;
+    cursor: pointer;
+    width: 100%;
+    /* Reset button defaults */
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    outline: none;
+}
+
+.file-upload-wrapper:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    border-style: solid;
+}
+
+.file-input-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    pointer-events: none;
+    /* Let clicks pass to the label */
+}
+
+.upload-icon {
+    font-size: 2.5rem;
+}
+
+.upload-text {
+    color: #475569;
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.file-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: #1e40af;
+    font-weight: 600;
+    background: #dbeafe;
+    padding: 0.6rem 1.2rem;
+    border-radius: 12px;
+    border: 1px solid #bfdbfe;
+}
+
+.clear-file-btn {
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0;
+    transition: background 0.2s;
+    margin-left: 10px;
+}
+
+.field-hint {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+}
+
+.bank-details-box {
+    background: #f1f5f9;
+    padding: 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid #3b82f6;
+}
+
+.bank-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.bank-row:last-child {
+    margin-bottom: 0;
+}
+
+.bank-row strong {
+    color: #4a5568;
+}
+
+.bank-row span {
+    color: #2d3748;
+    font-family: monospace;
+    font-weight: 600;
+}

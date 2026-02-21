@@ -20,7 +20,10 @@ import {
   adminListSuppliers,
   adminCreateSupplier,
   adminUpdateSupplier,
-  adminDeleteSupplier
+  adminDeleteSupplier,
+  adminApprovePayment,
+  adminVerifyOrderItemPrescription,
+  adminVerifyOrderPrescription
 } from '../controllers/admin.controller.js';
 import { authenticate, authorizeRoles } from '../middleware/auth.middleware.js';
 import { validateRequest } from '../middleware/validate.js';
@@ -148,11 +151,40 @@ router.patch(
   '/orders/:id/status',
   [
     body('status')
-      .isIn(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'])
+      .isIn(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'pending_prescription'])
       .withMessage('Invalid order status')
   ],
   validateRequest,
   adminUpdateOrderStatus
+);
+router.patch('/orders/:id/approve-payment', adminApprovePayment);
+router.patch(
+  '/orders/items/:orderItemId/prescription',
+  [
+    body('status')
+      .isIn(['approved', 'declined'])
+      .withMessage('Status must be approved or declined'),
+    body('notes').optional({ nullable: true }).isLength({ max: 500 }).withMessage('Notes too long')
+  ],
+  validateRequest,
+  adminVerifyOrderItemPrescription
+);
+
+router.patch(
+  '/orders/:id/prescription/verify',
+  [
+    body('status')
+      .isIn(['approved', 'declined'])
+      .withMessage('Status must be approved or declined'),
+    body('notes').optional({ nullable: true }).isLength({ max: 500 }).withMessage('Notes too long')
+  ],
+  validateRequest,
+  (req, res, next) => {
+    // We'll rename adminVerifyOrderItemPrescription to something more generic or create a new one
+    // For now I'll just use the existing controller function logic if I can adapt it
+    next();
+  },
+  adminVerifyOrderPrescription
 );
 
 router.get('/prescriptions', adminListPrescriptions);

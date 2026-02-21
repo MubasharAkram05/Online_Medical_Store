@@ -17,6 +17,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -38,6 +39,7 @@
     transform: translateY(20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -238,6 +240,47 @@
   border-top: 1px solid #e2e8f0;
 }
 
+.rich-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.rich-editor-field .quill {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rich-editor-field .ql-toolbar {
+  border: none !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  background: #f8fafc;
+  padding: 8px 12px !important;
+}
+
+.rich-editor-field .ql-container {
+  border: none !important;
+  min-height: 150px;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.rich-editor-field .ql-editor {
+  min-height: 150px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.rich-editor-field span {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #475569;
+}
+
 @media (max-width: 768px) {
   .add-product-modal-container {
     max-width: 100%;
@@ -281,4 +324,3 @@
     flex-direction: column;
   }
 }
-

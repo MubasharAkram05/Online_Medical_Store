@@ -7,6 +7,7 @@ const buildFileUrl = (req, filePath) => {
 
 const mapPrescriptionResponse = (req, row) => ({
   id: row.id,
+  medicineId: row.medicine_id,
   status: row.status,
   notes: row.notes,
   fileName: row.file_original_name,
@@ -32,6 +33,7 @@ export const uploadPrescription = async (req, res, next) => {
     const filePath = `prescriptions/${req.file.filename}`;
     const prescriptionId = await createPrescription({
       userId: req.user.id,
+      medicineId: req.body.medicineId || req.body.medicine_id,
       filePath,
       fileOriginalName: req.file.originalname,
       fileMimeType: req.file.mimetype,
@@ -61,7 +63,9 @@ export const uploadPrescription = async (req, res, next) => {
 
 export const listPrescriptions = async (req, res, next) => {
   try {
-    const prescriptions = await getPrescriptionsByUser(req.user.id);
+    const { medicineId, medicine_id } = req.query;
+    const mid = medicineId || medicine_id;
+    const prescriptions = await getPrescriptionsByUser(req.user.id, mid);
 
     res.json({
       prescriptions: prescriptions.map((row) => mapPrescriptionResponse(req, row))
@@ -96,7 +100,7 @@ export const updatePrescriptionNotes = async (req, res, next) => {
     await updatePrescription(id, notes);
 
     const updatedPrescription = await findPrescriptionById(id);
-    
+
     res.json({
       prescription: mapPrescriptionResponse(req, updatedPrescription)
     });

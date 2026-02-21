@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import Button from '../../components/common/Button';
+import Card from '../../components/common/Card';
 import { adminService } from '../../services/adminService';
 import './AdminOrdersPage.css';
 
@@ -20,6 +21,7 @@ const AdminOrdersPage = () => {
   const [userPrescriptions, setUserPrescriptions] = useState([]);
   const [viewingPrescription, setViewingPrescription] = useState(null);
   const [loadingPrescriptions, setLoadingPrescriptions] = useState(false);
+  const [viewingReceipt, setViewingReceipt] = useState(null);
 
   const loadOrders = useCallback(async () => {
     const response = await adminService.getOrders();
@@ -54,7 +56,7 @@ const AdminOrdersPage = () => {
       await adminService.updateOrderStatus(orderId, status);
       toast.success('Order status updated.');
       await loadOrders();
-      
+
       // Trigger prescription reload event if order is completed/delivered
       if (status === 'completed' || status === 'delivered') {
         console.log('Order completed/delivered, triggering prescriptionUpdated event');
@@ -76,6 +78,66 @@ const AdminOrdersPage = () => {
       }
     } catch (error) {
       toast.error(error.response?.data?.error?.message || 'Unable to update order.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleUpdateOrder = async (id, data) => {
+    setUpdatingId(id);
+    try {
+      await adminService.updateOrderDetails(id, data);
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === id ? { ...order, ...data } : order
+        )
+      );
+      toast.success('Order updated successfully!');
+
+      // Update selected order if it's open in modal
+      if (selectedOrder && selectedOrder.id === id) {
+        setSelectedOrder(prev => ({ ...prev, ...data }));
+      }
+    } catch (error) {
+      console.error('Error updating order:', error);
+      toast.error('Failed to update order.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleApprovePayment = async (orderId) => {
+    if (!window.confirm('Are you sure you want to approve this payment? This will confirm the order automatically.')) {
+      return;
+    }
+
+    setUpdatingId(orderId);
+    try {
+      await adminService.approvePayment(orderId);
+      toast.success('Payment approved and order confirmed!');
+
+      // Update local state
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === orderId
+            ? { ...order, paymentStatus: 'completed', status: 'confirmed' }
+            : order
+        )
+      );
+
+      // Update selected order if modal is open
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder(prev => ({
+          ...prev,
+          paymentStatus: 'completed',
+          status: 'confirmed'
+        }));
+      }
+
+      setViewingReceipt(null);
+    } catch (error) {
+      console.error('Error approving payment:', error);
+      toast.error(error.response?.data?.error?.message || 'Failed to approve payment.');
     } finally {
       setUpdatingId(null);
     }
@@ -105,12 +167,12 @@ const AdminOrdersPage = () => {
   const openOrderModal = (order, mode = 'view') => {
     setSelectedOrder(order);
     setModalMode(mode);
-    
+
     // Load user prescriptions when modal opens
     if (order.customer?.id) {
       loadUserPrescriptions(order.customer.id);
     }
-    
+
     if (mode === 'edit') {
       setEditForm({
         paymentStatus: order.paymentStatus || 'pending',
@@ -138,10 +200,69 @@ const AdminOrdersPage = () => {
     setEditForm(null);
     setUserPrescriptions([]);
     setViewingPrescription(null);
+    setViewingReceipt(null);
   };
 
   const handleViewPrescription = (prescription) => {
     setViewingPrescription(prescription);
+  };
+
+  const handleOrderItemPrescriptionAction = async (orderItemId, status) => {
+    let notes = '';
+    if (status === 'declined') {
+      notes = window.prompt('Please enter the reason for rejection:');
+      if (notes === null) return; // Cancelled
+    }
+
+    try {
+      setLoadingPrescriptions(true);
+      await adminService.verifyOrderItemPrescription(orderItemId, { status, notes });
+      toast.success(`Prescription ${status} successfully.`);
+
+      // Refresh order data
+      const response = await adminService.getOrders();
+      setOrders(response.data.orders);
+      if (selectedOrder) {
+        const updatedOrder = response.data.orders.find(o => o.id === selectedOrder.id);
+        if (updatedOrder) setSelectedOrder(updatedOrder);
+      }
+      // Close the preview modal after action
+      setViewingPrescription(null);
+    } catch (error) {
+      console.error('Error updating prescription status:', error);
+      toast.error(error.response?.data?.error?.message || 'Failed to update prescription status.');
+    } finally {
+      setLoadingPrescriptions(false);
+    }
+  };
+
+  const handleOrderPrescriptionAction = async (orderId, status) => {
+    let notes = '';
+    if (status === 'declined') {
+      notes = window.prompt('Please enter the reason for rejection:');
+      if (notes === null) return; // Cancelled
+    }
+
+    try {
+      setLoadingPrescriptions(true);
+      await adminService.verifyOrderPrescription(orderId, { status, notes });
+      toast.success(`Order prescription ${status} successfully.`);
+
+      // Refresh order data
+      const response = await adminService.getOrders();
+      setOrders(response.data.orders);
+      if (selectedOrder) {
+        const updatedOrder = response.data.orders.find(o => o.id === selectedOrder.id);
+        if (updatedOrder) setSelectedOrder(updatedOrder);
+      }
+      // Close the preview modal after action
+      setViewingPrescription(null);
+    } catch (error) {
+      console.error('Error updating order prescription status:', error);
+      toast.error(error.response?.data?.error?.message || 'Failed to update order prescription status.');
+    } finally {
+      setLoadingPrescriptions(false);
+    }
   };
 
   const handleApprovePrescription = async (prescriptionId) => {
@@ -151,7 +272,7 @@ const AdminOrdersPage = () => {
         status: 'verified'
       });
       toast.success('Prescription approved successfully.');
-      
+
       // Reload prescriptions in modal - with delay to ensure backend has updated
       if (selectedOrder?.customer?.id) {
         // Immediate reload
@@ -164,7 +285,7 @@ const AdminOrdersPage = () => {
           await loadUserPrescriptions(selectedOrder.customer.id);
         }, 1500);
       }
-      
+
       // Trigger event to update prescription status everywhere
       if (typeof window !== 'undefined') {
         console.log('Prescription approved, triggering prescriptionUpdated event');
@@ -356,26 +477,26 @@ const AdminOrdersPage = () => {
                 </thead>
                 <tbody>
                   {(order.items || []).map((item) => {
-                    const needsPrescription = 
-                      item.requiresPrescription === true || 
-                      item.requiresPrescription === 1 || 
-                      item.requires_prescription === true || 
+                    const needsPrescription =
+                      item.requiresPrescription === true ||
+                      item.requiresPrescription === 1 ||
+                      item.requires_prescription === true ||
                       item.requires_prescription === 1 ||
                       item.requiresPrescription === 'true' ||
                       item.requires_prescription === 'true';
-                    
+
                     return (
-                    <tr key={item.id}>
+                      <tr key={item.id}>
                         <td>
                           {item.name}
                           {needsPrescription && (
                             <span className="prescription-badge">Prescription Required</span>
                           )}
                         </td>
-                      <td>{item.quantity}</td>
-                      <td>{formatCurrency(item.unitPrice)}</td>
-                      <td>{formatCurrency(item.totalPrice)}</td>
-                    </tr>
+                        <td>{item.quantity}</td>
+                        <td>{formatCurrency(item.unitPrice)}</td>
+                        <td>{formatCurrency(item.totalPrice)}</td>
+                      </tr>
                     );
                   })}
                 </tbody>
@@ -438,27 +559,27 @@ const AdminOrdersPage = () => {
                           if (item.name && (item.requiresPrescription || item.requires_prescription)) {
                             console.log('Item with prescription:', item.name, item);
                           }
-                          
-                          const needsPrescription = 
-                            item.requiresPrescription === true || 
-                            item.requiresPrescription === 1 || 
-                            item.requires_prescription === true || 
+
+                          const needsPrescription =
+                            item.requiresPrescription === true ||
+                            item.requiresPrescription === 1 ||
+                            item.requires_prescription === true ||
                             item.requires_prescription === 1 ||
                             item.requiresPrescription === 'true' ||
                             item.requires_prescription === 'true';
-                          
+
                           return (
-                          <tr key={item.id}>
+                            <tr key={item.id}>
                               <td>
                                 {item.name}
                                 {needsPrescription && (
                                   <span className="prescription-badge">Prescription Required</span>
                                 )}
                               </td>
-                            <td>{item.quantity}</td>
-                            <td>{formatCurrency(item.unitPrice)}</td>
-                            <td>{formatCurrency(item.totalPrice)}</td>
-                          </tr>
+                              <td>{item.quantity}</td>
+                              <td>{formatCurrency(item.unitPrice)}</td>
+                              <td>{formatCurrency(item.totalPrice)}</td>
+                            </tr>
                           );
                         })}
                       </tbody>
@@ -590,6 +711,44 @@ const AdminOrdersPage = () => {
               </div>
               <div className="order-modal__section">
                 <h4>Items</h4>
+                {selectedOrder.items.some(item => item.prescriptionId) && (
+                  <Card className="order-prescription-admin-card">
+                    <div className="rx-admin-header">
+                      <h5>📋 Order Prescription</h5>
+                    </div>
+                    {(() => {
+                      const itemWithRx = selectedOrder.items.find(item => item.prescriptionId);
+                      return (
+                        <div className="rx-admin-body">
+                          <div className="rx-file-display">
+                            <span>{itemWithRx.prescriptionName}</span>
+                            <span className={`pill status-${itemWithRx.prescriptionStatus || 'pending'}`}>
+                              {itemWithRx.prescriptionStatus || 'pending'}
+                            </span>
+                          </div>
+                          <div className="rx-admin-actions">
+                            <Button
+                              variant="outline"
+                              size="small"
+                              onClick={() => handleViewPrescription({
+                                id: itemWithRx.prescriptionId,
+                                filePath: itemWithRx.prescriptionPath,
+                                fileName: itemWithRx.prescriptionName,
+                                orderId: selectedOrder.id, // Linked to the whole order
+                                status: itemWithRx.prescriptionStatus || 'pending',
+                                uploadedAt: itemWithRx.prescriptionUploadedAt,
+                                fileMimeType: itemWithRx.file_mime_type,
+                                fileUrl: itemWithRx.prescriptionPath ? `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}/uploads/prescriptions/${itemWithRx.prescriptionPath.split('/').pop()}` : null
+                              })}
+                            >
+                              View & Verify
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </Card>
+                )}
                 <table>
                   <thead>
                     <tr>
@@ -604,16 +763,16 @@ const AdminOrdersPage = () => {
                       const quantity = Number(item.quantity) || 0;
                       const totalAmount =
                         modalMode === 'edit' && editForm ? item.unitPrice * quantity : item.totalPrice;
-                      const needsPrescription = 
-                        item.requiresPrescription === true || 
-                        item.requiresPrescription === 1 || 
-                        item.requires_prescription === true || 
+                      const needsPrescription =
+                        item.requiresPrescription === true ||
+                        item.requiresPrescription === 1 ||
+                        item.requires_prescription === true ||
                         item.requires_prescription === 1 ||
                         item.requiresPrescription === 'true' ||
                         item.requires_prescription === 'true';
-                      
+
                       const latestPrescription = userPrescriptions.length > 0 ? userPrescriptions[0] : null;
-                      
+
                       return (
                         <tr key={item.id}>
                           <td>
@@ -621,32 +780,15 @@ const AdminOrdersPage = () => {
                               <div>
                                 {item.name}
                                 {needsPrescription && (
-                                  <span className={`prescription-badge ${latestPrescription?.status === 'verified' ? 'prescription-approved' : ''}`}>
-                                    {latestPrescription?.status === 'verified' ? '✓ Prescription Approved' : 'Prescription Required'}
-                                  </span>
+                                  <div className="prescription-status-info">
+                                    <span className={`prescription-badge status-${item.prescriptionStatus || 'pending'}`}>
+                                      {item.prescriptionStatus === 'verified' || item.prescriptionStatus === 'approved' ? '✓ Rx' :
+                                        item.prescriptionStatus === 'declined' || item.prescriptionStatus === 'rejected' ? '✗ Rx' :
+                                          '⌛ Rx'}
+                                    </span>
+                                  </div>
                                 )}
                               </div>
-                              {needsPrescription && latestPrescription && modalMode === 'view' && (
-                                <div className="prescription-actions-row">
-                                  <Button
-                                    variant="outline"
-                                    size="small"
-                                    onClick={() => handleViewPrescription(latestPrescription)}
-                                  >
-                                    View Prescription
-                                  </Button>
-                                  {latestPrescription.status === 'pending' && (
-                                    <Button
-                                      variant="primary"
-                                      size="small"
-                                      onClick={() => handleApprovePrescription(latestPrescription.id)}
-                                      disabled={loadingPrescriptions}
-                                    >
-                                      Approve
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
                             </div>
                           </td>
                           <td>
@@ -734,11 +876,29 @@ const AdminOrdersPage = () => {
                 <div className="order-modal__grid payment-summary">
                   <div>
                     <strong>Payment Status</strong>
-                    <p>{selectedOrder.paymentStatus}</p>
+                    <p className={`status-text-${selectedOrder.paymentStatus}`}>{selectedOrder.paymentStatus}</p>
                   </div>
                   <div className="payment-method-wrapper">
                     <strong>Payment Method</strong>
                     <span className="payment-method-pill">{selectedOrder.paymentMethod?.toUpperCase()}</span>
+                  </div>
+                  <div className="verification-details">
+                    {selectedOrder.payment?.transactionId && (
+                      <p><strong>TX ID:</strong> {selectedOrder.payment.transactionId}</p>
+                    )}
+                    {selectedOrder.payment?.receiptUrl && (
+                      <Button
+                        variant="outline"
+                        className="view-receipt-btn"
+                        onClick={() => setViewingReceipt({
+                          url: `${process.env.REACT_APP_API_URL || ''}${selectedOrder.payment.receiptUrl}`,
+                          orderId: selectedOrder.id,
+                          method: selectedOrder.paymentMethod
+                        })}
+                      >
+                        📄 View Receipt
+                      </Button>
+                    )}
                   </div>
                   <div className="priority-block">
                     <strong>Priority</strong>
@@ -747,9 +907,22 @@ const AdminOrdersPage = () => {
                     </span>
                   </div>
                 </div>
-                <Button type="button" variant="outline" onClick={closeOrderModal}>
-                  Close
-                </Button>
+                <div className="order-modal__actions">
+                  {selectedOrder.paymentStatus === 'pending' && selectedOrder.paymentMethod !== 'cod' && (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      className="verify-payment-btn"
+                      onClick={() => handleApprovePayment(selectedOrder.id)}
+                      disabled={updatingId === selectedOrder.id}
+                    >
+                      ✅ Approve Payment
+                    </Button>
+                  )}
+                  <Button type="button" variant="outline" onClick={closeOrderModal}>
+                    Close
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -834,9 +1007,85 @@ const AdminOrdersPage = () => {
               </div>
             </div>
             <div className="view-prescription-modal-footer">
-              <Button variant="outline" onClick={() => setViewingPrescription(null)}>
-                Close
-              </Button>
+              <div className="modal-actions">
+                {(viewingPrescription.orderItemId || viewingPrescription.orderId) && (viewingPrescription.status === 'pending' || !viewingPrescription.status) && (
+                  <>
+                    <Button
+                      variant="primary"
+                      onClick={() => {
+                        if (viewingPrescription.orderId) {
+                          handleOrderPrescriptionAction(viewingPrescription.orderId, 'approved');
+                        } else {
+                          handleOrderItemPrescriptionAction(viewingPrescription.orderItemId, 'approved');
+                        }
+                      }}
+                      disabled={loadingPrescriptions}
+                    >
+                      ✅ Approve Prescription
+                    </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => {
+                        if (viewingPrescription.orderId) {
+                          handleOrderPrescriptionAction(viewingPrescription.orderId, 'declined');
+                        } else {
+                          handleOrderItemPrescriptionAction(viewingPrescription.orderItemId, 'declined');
+                        }
+                      }}
+                      disabled={loadingPrescriptions}
+                    >
+                      ❌ Reject Prescription
+                    </Button>
+                  </>
+                )}
+                <Button variant="outline" onClick={() => setViewingPrescription(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* View Receipt Modal */}
+      {viewingReceipt && (
+        <div className="view-prescription-modal-overlay" onClick={() => setViewingReceipt(null)}>
+          <div className="view-prescription-modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="view-prescription-modal-header">
+              <h3>Payment Receipt Preview</h3>
+              <button className="modal-close-btn" onClick={() => setViewingReceipt(null)}>×</button>
+            </div>
+            <div className="view-prescription-modal-body">
+              <div className="receipt-preview-container">
+                {viewingReceipt.url.toLowerCase().endsWith('.pdf') ? (
+                  <iframe
+                    src={viewingReceipt.url}
+                    title="Receipt PDF"
+                    className="prescription-iframe"
+                  />
+                ) : (
+                  <img
+                    src={viewingReceipt.url}
+                    alt="Payment Receipt"
+                    className="prescription-image"
+                  />
+                )}
+              </div>
+            </div>
+            <div className="view-prescription-modal-footer">
+              <div className="modal-actions">
+                <Button variant="outline" onClick={() => setViewingReceipt(null)}>
+                  Close
+                </Button>
+                {selectedOrder?.paymentStatus === 'pending' && (
+                  <Button
+                    variant="primary"
+                    onClick={() => handleApprovePayment(viewingReceipt.orderId)}
+                    disabled={updatingId === viewingReceipt.orderId}
+                  >
+                    ✅ Approve & Confirm Order
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>

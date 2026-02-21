@@ -25,6 +25,7 @@ import {
   updatePrescriptionStatus,
   findPrescriptionById
 } from '../models/prescription.model.js';
+import { sendPrescriptionStatusEmail } from '../services/email.service.js';
 import {
   getAllUsers,
   updateUserRole,
@@ -39,7 +40,7 @@ import {
   updateSupplier,
   deleteSupplier
 } from '../models/supplier.model.js';
-import { updatePaymentStatusForOrder } from '../models/payment.model.js';
+import { updatePaymentStatusForOrder, approvePayment } from '../models/payment.model.js';
 import {
   generateSalesReportPDF,
   generateInventoryReportPDF,
@@ -75,6 +76,7 @@ const formatMedicineResponse = (medicine) => ({
   dosageInstructions: medicine.dosage_instructions || '',
   sideEffects: medicine.side_effects || '',
   interactionNotes: parseInteractionNotes(medicine.interactions),
+  sortOrder: medicine.sort_order,
   createdAt: medicine.created_at,
   updatedAt: medicine.updated_at
 });
@@ -379,7 +381,14 @@ export const adminListOrders = async (req, res, next) => {
           quantity: item.quantity,
           unitPrice: Number(item.unit_price),
           totalPrice: Number(item.total_price),
-          requiresPrescription: Boolean(item.requires_prescription)
+          requiresPrescription: Boolean(item.requires_prescription),
+          prescriptionId: item.prescription_id,
+          prescriptionStatus: item.prescription_status,
+          prescriptionNotes: item.prescription_notes,
+          prescriptionPath: item.prescription_path,
+          prescriptionName: item.prescription_name,
+          prescriptionUploadedAt: item.uploaded_at,
+          file_mime_type: item.file_mime_type
         }));
 
         return mapAdminOrderResponse(order, items);
@@ -927,3 +936,213 @@ export const adminDeleteSupplier = async (req, res, next) => {
   }
 };
 
+export const adminApprovePayment = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const detailed = await getOrderWithItemsAdmin(id);
+
+    if (!detailed) {
+      return res.status(404).json({ error: { message: 'Order not found' } });
+    }
+
+    if (detailed.order.payment_method === 'cod') {
+      return res.status(400).json({ error: { message: 'COD orders do not require payment approval' } });
+    }
+
+    // Update payment status to completed
+    await approvePayment(id, req.user.id);
+
+    // Automatically update order status to confirmed
+    await updateOrderStatus(id, 'confirmed');
+
+    console.log(`Payment approved by admin ${req.user.id} (Name: ${req.user.name}) for order ${id} at ${new Date().toISOString()}`);
+
+    const updated = await getOrderWithItemsAdmin(id);
+    res.json({
+      message: 'Payment approved and order confirmed.',
+      order: updated ? updated.order : null
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+export const adminVerifyOrderItemPrescription = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ error: { message: 'Validation failed', details: errors.array() } });
+  }
+
+  const { status, notes } = req.body;
+  const orderItemId = Number(req.params.orderItemId);
+
+  try {
+    const pool = getPool();
+    // 1. Get order item and associated prescription
+    const [itemRows] = await pool.query(
+      `SELECT oi.*, p.id AS p_id, p.status AS p_status, o.status AS o_status, o.order_number, u.email AS customer_email, m.name AS medicine_name
+       FROM order_items oi
+       JOIN orders o ON o.id = oi.order_id
+       JOIN users u ON u.id = o.user_id
+       JOIN medicines m ON m.id = oi.medicine_id
+       LEFT JOIN prescriptions p ON p.id = oi.prescription_id
+       WHERE oi.id = ?`,
+      [orderItemId]
+    );
+
+    const item = itemRows[0];
+    if (!item) {
+      return res.status(404).json({ error: { message: 'Order item not found' } });
+    }
+
+    if (!item.prescription_id) {
+      return res.status(400).json({ error: { message: 'This item does not have an attached prescription' } });
+    }
+
+    // 2. Update order item status
+    await pool.query(
+      `UPDATE order_items 
+       SET prescription_status = ?, 
+           prescription_notes = ?, 
+           prescription_verified_by = ?, 
+           prescription_verified_at = NOW() 
+       WHERE id = ?`,
+      [status, notes || null, req.user.id, orderItemId]
+    );
+
+    // 3. Rejection logic: If rejected, mark the global prescription as rejected too
+    if (status === 'declined') {
+      await pool.query(
+        `UPDATE prescriptions SET status = 'rejected', notes = COALESCE(?, notes) WHERE id = ?`,
+        [notes || 'Rejected in order review', item.prescription_id]
+      );
+    }
+
+    // 4. Check if all items in this order are now verified
+    const [allItemRows] = await pool.query(
+      `SELECT prescription_status, medicine_id 
+       FROM order_items 
+       WHERE order_id = ?`,
+      [item.order_id]
+    );
+
+    // Fetch medicine details to see which items require prescription
+    const medicineIds = allItemRows.map(r => r.medicine_id);
+    const [medicines] = await pool.query(`SELECT id, requires_prescription FROM medicines WHERE id IN (?)`, [medicineIds]);
+    const medicinesMap = new Map(medicines.map(m => [m.id, m.requires_prescription]));
+
+    const allVerified = allItemRows.every(row => {
+      const requires = medicinesMap.get(row.medicine_id);
+      if (!requires) return true;
+      return row.prescription_status === 'approved';
+    });
+
+    if (allVerified) {
+      // Update overall order status if it was pending prescription
+      const newStatus = item.o_status === 'pending_prescription' ? 'pending' : item.o_status;
+      await pool.query(
+        `UPDATE orders SET prescription_verified = 1, status = ? WHERE id = ?`,
+        [newStatus, item.order_id]
+      );
+    } else {
+      await pool.query(
+        `UPDATE orders SET prescription_verified = 0 WHERE id = ?`,
+        [item.order_id]
+      );
+    }
+
+    // 5. Send Email Notification
+    if (item.customer_email) {
+      sendPrescriptionStatusEmail(item.customer_email, {
+        orderNumber: item.order_number,
+        itemName: item.medicine_name,
+        status: status,
+        notes: notes
+      }).catch(err => console.error('Failed to send status email:', err));
+    }
+
+    console.log(`Prescription for order item ${orderItemId} ${status} by admin ${req.user.id} at ${new Date().toISOString()}`);
+
+    res.json({
+      message: `Prescription ${status} successfully.`,
+      allVerified
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const adminVerifyOrderPrescription = async (req, res, next) => {
+  try {
+    const orderId = Number(req.params.id);
+    const { status, notes } = req.body;
+    const pool = getPool();
+
+    // 1. Get order and items info
+    const [items] = await pool.query(
+      `SELECT oi.id, oi.prescription_id, o.user_id, o.email as customer_email, o.order_number
+       FROM order_items oi
+       JOIN orders o ON o.id = oi.order_id
+       WHERE o.id = ? AND oi.prescription_id IS NOT NULL`,
+      [orderId]
+    );
+
+    if (items.length === 0) {
+      return res.status(404).json({ error: { message: 'No items with prescriptions found for this order' } });
+    }
+
+    // 2. Update all order items that have a prescription
+    await pool.query(
+      `UPDATE order_items 
+       SET prescription_status = ?, 
+           prescription_notes = ?, 
+           prescription_verified_by = ?, 
+           prescription_verified_at = NOW() 
+       WHERE order_id = ? AND prescription_id IS NOT NULL`,
+      [status, notes || null, req.user.id, orderId]
+    );
+
+    // 3. Update global prescription status if rejected
+    const prescriptionId = items[0].prescription_id;
+    if (status === 'declined') {
+      await pool.query(
+        `UPDATE prescriptions SET status = 'rejected', notes = COALESCE(?, notes) WHERE id = ?`,
+        [notes || 'Rejected in order review', prescriptionId]
+      );
+    } else if (status === 'approved') {
+      await pool.query(
+        `UPDATE prescriptions SET status = 'verified' WHERE id = ?`,
+        [prescriptionId]
+      );
+    }
+
+    // 4. Update overall order status
+    if (status === 'approved') {
+      await pool.query(
+        `UPDATE orders SET prescription_verified = 1 WHERE id = ?`,
+        [orderId]
+      );
+    } else {
+      await pool.query(
+        `UPDATE orders SET prescription_verified = 0 WHERE id = ?`,
+        [orderId]
+      );
+    }
+
+    // 5. Send Email Notification
+    if (items[0].customer_email) {
+      sendPrescriptionStatusEmail(items[0].customer_email, {
+        orderNumber: items[0].order_number,
+        itemName: 'Order Prescription',
+        status: status,
+        notes: notes
+      }).catch(err => console.error('Failed to send status email:', err));
+    }
+
+    res.json({
+      message: `Order prescription ${status} successfully.`,
+      orderId
+    });
+  } catch (error) {
+    next(error);
+  }
+};

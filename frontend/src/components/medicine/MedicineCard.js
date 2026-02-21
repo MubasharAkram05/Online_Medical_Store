@@ -13,8 +13,8 @@ const MedicineCard = ({ medicine }) => {
     e.stopPropagation();
 
     if (medicine.requires_prescription) {
-      toast.warning('This medicine requires a prescription. Please upload one first.');
-      return;
+      toast.info('This medicine requires a prescription. Redirecting to select one...');
+      return; // Link wrapper will handle navigation
     }
 
     if (medicine.stock === 0) {
@@ -47,7 +47,7 @@ const MedicineCard = ({ medicine }) => {
         <div className="medicine-info">
           <h3 className="medicine-name">{medicine.name}</h3>
           <p className="medicine-manufacturer-card">{medicine.manufacturer || 'Generic'}</p>
-          <p className="medicine-description">{medicine.description || 'Quality healthcare product'}</p>
+          <p className="medicine-description">{(medicine.description || 'Quality healthcare product').replace(/<[^>]*>?/gm, '')}</p>
           <div className="medicine-details">
             <span className="medicine-price">PKR {medicine.price?.toFixed(2) || '0.00'}</span>
             <span className="medicine-stock">Stock: {medicine.stock ?? 0}</span>

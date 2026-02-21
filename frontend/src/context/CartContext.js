@@ -44,6 +44,7 @@ export const CartProvider = ({ children }) => {
     return resolveCartStorageKey();
   });
   const [cartItems, setCartItems] = useState([]);
+  const [orderPrescription, setOrderPrescription] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -79,36 +80,46 @@ export const CartProvider = ({ children }) => {
       return;
     }
 
-    setIsInitialized(false);
+    // Only set initialized to false if we don't have items to avoid flickers
+    // or if the storage key actually changed (user login/logout)
+    const loadCartAction = () => {
+      try {
+        let savedCart = window.localStorage.getItem(storageKey);
+        let savedRx = window.localStorage.getItem(`${storageKey}_rx`);
 
-    try {
-      let savedCart = window.localStorage.getItem(storageKey);
-
-      if (!savedCart && storageKey !== LEGACY_CART_KEY) {
-        const legacyCart = window.localStorage.getItem(LEGACY_CART_KEY);
-        if (legacyCart) {
-          savedCart = legacyCart;
-          window.localStorage.setItem(storageKey, legacyCart);
-          window.localStorage.removeItem(LEGACY_CART_KEY);
+        if (!savedCart && storageKey !== LEGACY_CART_KEY) {
+          const legacyCart = window.localStorage.getItem(LEGACY_CART_KEY);
+          if (legacyCart) {
+            savedCart = legacyCart;
+            window.localStorage.setItem(storageKey, legacyCart);
+            window.localStorage.removeItem(LEGACY_CART_KEY);
+          }
         }
-      }
 
-      if (savedCart) {
-        const parsed = JSON.parse(savedCart);
-        if (Array.isArray(parsed)) {
-          setCartItems(parsed);
-        } else {
-          setCartItems([]);
+        if (savedCart) {
+          const parsed = JSON.parse(savedCart);
+          if (Array.isArray(parsed)) {
+            // Merge or set? For a fresh load (key change), we set.
+            // If it's just a re-sync, we should be careful.
+            setCartItems((prevItems) => {
+              // If we already have items and they were added AFTER initialization started,
+              // we don't want to lose them. But usually, on key change, we want the new key's data.
+              return parsed;
+            });
+          }
         }
-      } else {
-        setCartItems([]);
+
+        if (savedRx) {
+          setOrderPrescription(JSON.parse(savedRx));
+        }
+      } catch (error) {
+        console.error('Error loading cart from localStorage:', error);
+      } finally {
+        setIsInitialized(true);
       }
-    } catch (error) {
-      console.error('Error loading cart from localStorage:', error);
-      setCartItems([]);
-    } finally {
-      setIsInitialized(true);
-    }
+    };
+
+    loadCartAction();
   }, [storageKey]);
 
   useEffect(() => {
@@ -118,29 +129,53 @@ export const CartProvider = ({ children }) => {
 
     try {
       window.localStorage.setItem(storageKey, JSON.stringify(cartItems));
+      if (orderPrescription) {
+        window.localStorage.setItem(`${storageKey}_rx`, JSON.stringify(orderPrescription));
+      } else {
+        window.localStorage.removeItem(`${storageKey}_rx`);
+      }
     } catch (error) {
       console.error('Error saving cart to localStorage:', error);
     }
-  }, [cartItems, storageKey, isInitialized]);
+  }, [cartItems, orderPrescription, storageKey, isInitialized]);
 
   const addToCart = (medicine, quantity = 1) => {
-    setCartItems((prevItems) => {
-      const existingItem = prevItems.find(item => item.id === medicine.id);
+    if (!medicine || !medicine.id) {
+      console.warn('CartContext: Attempted to add invalid medicine', medicine);
+      return;
+    }
 
-      if (existingItem) {
-        return prevItems.map(item =>
-          item.id === medicine.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
+    const numQuantity = Number(quantity) || 1;
+
+    setCartItems((prevItems) => {
+      // For items with prescriptions, we treat each distinct mapping as a separate item
+      const existingItemIndex = prevItems.findIndex(
+        (item) => String(item.id) === String(medicine.id)
+      );
+
+      if (existingItemIndex > -1) {
+        const newItems = [...prevItems];
+        newItems[existingItemIndex] = {
+          ...newItems[existingItemIndex],
+          quantity: newItems[existingItemIndex].quantity + numQuantity
+        };
+        return newItems;
       } else {
-        return [...prevItems, { ...medicine, quantity }];
+        return [...prevItems, {
+          ...medicine,
+          quantity: numQuantity
+        }];
       }
     });
   };
 
   const removeFromCart = (medicineId) => {
-    setCartItems((prevItems) => prevItems.filter(item => item.id !== medicineId));
+    setCartItems((prevItems) =>
+      prevItems.filter((item) => {
+        const idMatch = String(item.id) === String(medicineId);
+        return !(idMatch);
+      })
+    );
   };
 
   const removeUnavailableItems = (medicineIds) => {
@@ -148,28 +183,35 @@ export const CartProvider = ({ children }) => {
       return;
     }
 
+    const stringIds = medicineIds.map(id => String(id));
     setCartItems((prevItems) =>
-      prevItems.filter((item) => !medicineIds.includes(item.id))
+      prevItems.filter((item) => !stringIds.includes(String(item.id)))
     );
   };
 
   const updateQuantity = (medicineId, quantity) => {
-    if (quantity <= 0) {
+    const numQuantity = Number(quantity);
+
+    if (numQuantity <= 0) {
       removeFromCart(medicineId);
       return;
     }
 
     setCartItems((prevItems) =>
-      prevItems.map(item =>
-        item.id === medicineId ? { ...item, quantity } : item
+      prevItems.map((item) =>
+        String(item.id) === String(medicineId)
+          ? { ...item, quantity: numQuantity }
+          : item
       )
     );
   };
 
   const clearCart = () => {
     setCartItems([]);
+    setOrderPrescription(null);
     if (typeof window !== 'undefined' && storageKey) {
       window.localStorage.removeItem(storageKey);
+      window.localStorage.removeItem(`${storageKey}_rx`);
     }
   };
 
@@ -183,6 +225,8 @@ export const CartProvider = ({ children }) => {
 
   const value = {
     cartItems,
+    orderPrescription,
+    setOrderPrescription,
     addToCart,
     removeFromCart,
     removeUnavailableItems,

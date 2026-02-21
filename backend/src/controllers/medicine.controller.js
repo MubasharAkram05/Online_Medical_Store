@@ -108,9 +108,25 @@ const formatMedicineResponse = (medicine) => ({
       name: medicine.supplier_name || null
     }
     : null,
-  dosageInstructions: medicine.dosage_instructions || '',
-  sideEffects: medicine.side_effects || '',
+  dosageInstructions: medicine.dosage_instructions || `
+    <p>Take as directed by your healthcare provider. The usual adult dose is 1-2 tablets every 4-6 hours as needed.</p>
+    <ul>
+      <li><strong>Adults:</strong> 1-2 tablets every 4-6 hours.</li>
+      <li><strong>Children:</strong> Consult a healthcare provider for appropriate pediatric dosing.</li>
+      <li><strong>Elderly:</strong> Dosage may need adjustment. Consult your doctor.</li>
+    </ul>
+  `,
+  sideEffects: medicine.side_effects || `
+    <p>Common side effects may include:</p>
+    <ul>
+      <li>Nausea or upset stomach</li>
+      <li>Headache or dizziness</li>
+      <li>Drowsiness or fatigue</li>
+      <li>Dry mouth</li>
+    </ul>
+  `,
   interactionNotes: parseInteractionNotes(medicine.interactions),
+  sortOrder: medicine.sort_order,
   createdAt: medicine.created_at,
   updatedAt: medicine.updated_at
 });

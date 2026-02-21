@@ -69,3 +69,27 @@ export const updatePaymentStatusForOrder = async (orderId, status, fallback = {}
   return result.insertId;
 };
 
+export const updatePaymentProof = async (orderId, receiptUrl) => {
+  const [result] = await getPool().query(
+    `UPDATE payments
+     SET receipt_url = ?, status = 'pending'
+     WHERE order_id = ?
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [receiptUrl, orderId]
+  );
+  return result.affectedRows > 0;
+};
+
+export const approvePayment = async (orderId, adminId) => {
+  const [result] = await getPool().query(
+    `UPDATE payments
+     SET status = 'completed', 
+         captured_at = NOW()
+     WHERE order_id = ?
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [orderId]
+  );
+  return result.affectedRows > 0;
+};

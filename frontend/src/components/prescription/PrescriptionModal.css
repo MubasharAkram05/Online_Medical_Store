@@ -27,17 +27,72 @@
   margin-bottom: 1.5rem;
 }
 
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
 .modal-header h2 {
   font-size: 1.5rem;
   font-weight: 700;
   color: #111827;
-  margin-bottom: 0.5rem;
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  color: #6b7280;
+  cursor: pointer;
+  line-height: 1;
 }
 
 .modal-header p {
   color: #6b7280;
   font-size: 0.95rem;
   line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.tab-container {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid #f3f4f6;
+  margin-top: 1rem;
+}
+
+.tab-btn {
+  padding: 0.6rem 1rem;
+  border: none;
+  background: none;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.tab-btn.active {
+  color: #4f46e5;
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #4f46e5;
+}
+
+.tab-btn:hover:not(.active) {
+  color: #374151;
+  background-color: #f9fafb;
 }
 
 .modal-header strong {
@@ -49,134 +104,201 @@
 }
 
 .loading-state {
-  text-align: center;
-  padding: 2rem;
-  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem 1rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #eef2ff;
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state {
   text-align: center;
-  padding: 2rem;
-  color: #6b7280;
+  padding: 3rem 1rem;
 }
 
-.empty-state p {
-  margin-bottom: 0.5rem;
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.empty-hint {
+  font-size: 0.85rem;
+  margin-top: 1rem;
+  color: #9ca3af;
 }
 
 .prescription-list {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  max-height: 300px;
+  max-height: 400px;
   overflow-y: auto;
+  padding: 0.25rem;
 }
 
 .prescription-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
+  padding: 1.25rem;
+  border: 2px solid #f3f4f6;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: white;
 }
 
 .prescription-item:hover {
-  border-color: #d1d5db;
-  background-color: #f9fafb;
+  border-color: #e5e7eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .prescription-item.selected {
   border-color: #4f46e5;
-  background-color: #eef2ff;
+  background-color: #f5f3ff;
 }
 
-.prescription-info {
-  flex: 1;
+.prescription-item.matching {
+  background-color: #f0fdf4;
+  border-color: #86efac;
+}
+
+.prescription-item.matching.selected {
+  border-color: #4f46e5;
+  background-color: #ecfdf5;
+}
+
+.prescription-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.file-icon {
+  font-size: 1.25rem;
 }
 
 .prescription-name {
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 0.25rem;
+  font-weight: 700;
+  color: #111827;
+  font-size: 1rem;
 }
 
 .prescription-meta {
-  font-size: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.meta-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.meta-tag.date {
+  background: #f3f4f6;
   color: #6b7280;
 }
 
-.prescription-status {
-  margin-left: 1rem;
+.meta-tag.medicine-name {
+  background: #fef3c7;
+  color: #92400e;
 }
 
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.35rem 0.75rem;
+.meta-tag.medicine-name.match {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge-mini {
+  padding: 4px 10px;
   border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: capitalize;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
 }
 
 .status-pending {
-  background-color: rgba(249, 115, 22, 0.12);
-  color: #c2410c;
+  background: #ffedd5;
+  color: #9a3412;
 }
 
 .status-verified {
-  background-color: rgba(16, 185, 129, 0.12);
-  color: #047857;
+  background: #dcfce7;
+  color: #166534;
 }
 
 .status-rejected {
-  background-color: rgba(239, 68, 68, 0.12);
-  color: #b91c1c;
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .status-expired {
-  background-color: rgba(148, 163, 184, 0.2);
-  color: #475569;
+  background: #f3f4f6;
+  color: #4b5563;
 }
 
 .modal-footer {
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #f3f4f6;
   padding-top: 1.5rem;
+  margin-top: 1rem;
 }
 
 .modal-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
   justify-content: flex-end;
+}
+
+.upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 @media (max-width: 640px) {
   .modal-container {
     padding: 0.5rem;
   }
-  
+
   .prescription-modal {
     padding: 1.5rem;
   }
-  
+
   .modal-actions {
     flex-direction: column;
   }
-  
+
   .modal-actions button {
     width: 100%;
   }
-  
+
   .prescription-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .prescription-status {
     margin-left: 0;
     align-self: flex-end;

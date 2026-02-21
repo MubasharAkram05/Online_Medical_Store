@@ -12,7 +12,7 @@ const formatFileSize = (bytes) => {
   return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
 };
 
-const PrescriptionUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
+const PrescriptionUploadModal = ({ isOpen, onClose, onUploadSuccess, medicine = null }) => {
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -30,8 +30,9 @@ const PrescriptionUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
   const loadPrescriptions = async () => {
     setFetching(true);
     try {
-      const response = await prescriptionService.list();
-      // Show all prescriptions in modal (including expired for history)
+      // Pass medicine_id to API if provided to filter in backend
+      const response = await prescriptionService.list(medicine?.id);
+      // Show all prescriptions in modal (including expired for history, but filtered by medicine)
       setPrescriptions(response.data.prescriptions || []);
     } catch (error) {
       toast.error('Unable to load prescriptions.');
@@ -41,6 +42,11 @@ const PrescriptionUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
   };
 
   const handleUpload = async (formData, reset) => {
+    // Append medicineId if context exists
+    if (medicine?.id) {
+      formData.append('medicineId', medicine.id);
+    }
+
     setLoading(true);
     try {
       const response = await prescriptionService.upload(formData);
@@ -72,10 +78,10 @@ const PrescriptionUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
         const formData = new FormData();
         formData.append('file', editFile);
         formData.append('notes', editNotes);
-        
+
         await prescriptionService.upload(formData);
         toast.success('Prescription updated successfully with new file.');
-        
+
         // Delete the old prescription
         await prescriptionService.delete(editingId);
       } else {
@@ -83,7 +89,7 @@ const PrescriptionUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
         await prescriptionService.update(editingId, editNotes);
         toast.success('Prescription notes updated successfully.');
       }
-      
+
       await loadPrescriptions();
       setEditingId(null);
       setEditNotes('');
@@ -143,7 +149,7 @@ const PrescriptionUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
                 <h3>Your Prescriptions</h3>
                 {fetching && <span className="loading-indicator">Loading...</span>}
               </div>
-              
+
               {prescriptions.length === 0 ? (
                 <div className="empty-state">
                   <p>No prescriptions uploaded yet.</p>

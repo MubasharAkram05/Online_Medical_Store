@@ -169,7 +169,7 @@
   padding-top: 1.25rem;
 }
 
-.totals > div {
+.totals>div {
   display: flex;
   justify-content: space-between;
   font-weight: 500;
@@ -230,6 +230,45 @@
   color: #92400e;
 }
 
+.item-prescription-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.status-badge.prescription-pending {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  font-size: 0.75rem;
+}
+
+.status-badge.prescription-approved {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  font-size: 0.75rem;
+}
+
+.status-badge.prescription-declined {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  font-size: 0.75rem;
+}
+
+.admin-notes {
+  background-color: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #9f1239;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.admin-notes strong {
+  color: #881337;
+}
+
 .receipt-link {
   color: #4f46e5;
   font-weight: 600;
@@ -273,4 +312,3 @@
     gap: 1.25rem;
   }
 }
-

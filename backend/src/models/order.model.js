@@ -37,12 +37,13 @@ export const createOrderItems = async (connection, orderId, items) => {
     item.medicineId,
     item.quantity,
     item.unitPrice,
-    item.totalPrice
+    item.totalPrice,
+    item.prescriptionId || null
   ]);
 
   await connection.query(
     `INSERT INTO order_items
-      (order_id, medicine_id, quantity, unit_price, total_price)
+      (order_id, medicine_id, quantity, unit_price, total_price, prescription_id)
      VALUES ?`,
     [values]
   );
@@ -79,9 +80,10 @@ export const getOrderWithItems = async (userId, orderId) => {
   if (!order) return null;
 
   const [items] = await getPool().query(
-    `SELECT oi.*, m.name, m.image_url, m.requires_prescription
+    `SELECT oi.*, m.name, m.image_url, m.requires_prescription, p.file_path AS prescription_path, p.file_original_name AS prescription_name, p.file_mime_type
      FROM order_items oi
      INNER JOIN medicines m ON m.id = oi.medicine_id
+     LEFT JOIN prescriptions p ON p.id = oi.prescription_id
      WHERE oi.order_id = ?`,
     [orderId]
   );
@@ -114,9 +116,10 @@ export const getOrderWithItemsAdmin = async (orderId) => {
   if (!order) return null;
 
   const [items] = await getPool().query(
-    `SELECT oi.*, m.name, m.image_url, m.requires_prescription
+    `SELECT oi.*, m.name, m.image_url, m.requires_prescription, p.file_path AS prescription_path, p.file_original_name AS prescription_name, p.file_mime_type, p.uploaded_at
      FROM order_items oi
      INNER JOIN medicines m ON m.id = oi.medicine_id
+     LEFT JOIN prescriptions p ON p.id = oi.prescription_id
      WHERE oi.order_id = ?`,
     [orderId]
   );

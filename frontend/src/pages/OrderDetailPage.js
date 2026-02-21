@@ -135,9 +135,22 @@ const OrderDetailPage = () => {
                 </span>
               </div>
               <div>
-                <span className="label">Prescription</span>
+                <span className="label">Order Prescription</span>
                 <span className="value">
-                  {order.prescriptionVerified ? 'Verified' : 'Pending verification'}
+                  {order.items.find(item => item.prescriptionId) ? (
+                    <div className="order-rx-info">
+                      <span className={`status-badge prescription-${order.items.find(item => item.prescriptionId).prescriptionStatus || 'pending'}`}>
+                        {order.items.find(item => item.prescriptionId).prescriptionStatus === 'approved' ? '✓ Verified' :
+                          order.items.find(item => item.prescriptionId).prescriptionStatus === 'declined' ? '✗ Declined' :
+                            '⌛ Pending Verification'}
+                      </span>
+                      {order.items.find(item => item.prescriptionId).prescriptionName && (
+                        <p className="rx-file-name">File: {order.items.find(item => item.prescriptionId).prescriptionName}</p>
+                      )}
+                    </div>
+                  ) : (
+                    order.items.some(item => item.requiresPrescription) ? '❌ Missing' : 'Not Required'
+                  )}
                 </span>
               </div>
             </div>
@@ -174,11 +187,8 @@ const OrderDetailPage = () => {
               {order.items.map((item) => (
                 <div className="item-row" key={item.id}>
                   <div className="item-info">
-                    <span className="item-name">{item.name}</span>
+                    <span className="item-name">{item.name} {item.requiresPrescription && <span className="rx-label-mini">Rx</span>}</span>
                     <span className="item-qty">Qty: {item.quantity}</span>
-                    {item.requiresPrescription && (
-                      <span className="item-tag">Requires Prescription</span>
-                    )}
                   </div>
                   <div className="item-price">PKR {item.totalPrice.toFixed(2)}</div>
                 </div>

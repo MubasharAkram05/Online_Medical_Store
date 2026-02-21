@@ -8,6 +8,7 @@ export const medicineService = {
   create: (data) => api.post('/medicines', data),
   update: (id, data) => api.put(`/medicines/${id}`, data),
   delete: (id) => api.delete(`/medicines/${id}`),
-  checkInteractions: (medicineIds) => api.post('/medicines/interactions', { medicineIds })
+  checkInteractions: (medicineIds) => api.post('/medicines/interactions', { medicineIds }),
+  getMedicinesByIds: (ids) => api.get('/medicines', { params: { ids: ids.join(',') } })
 };
 

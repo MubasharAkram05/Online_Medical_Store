@@ -20,14 +20,17 @@ const AdminMedicinesPage = () => {
   const filteredMedicines = useMemo(() => {
     let result = [...medicines];
 
-    // Category Tabs Filtering
+    // Category Tabs & Dropdown Filtering
     if (categoryFilter === 'Prescription') {
       result = result.filter(m => m.requires_prescription);
     } else if (categoryFilter === 'OTC') {
       result = result.filter(m => !m.requires_prescription && m.category === 'Medicines');
     } else if (categoryFilter === 'Wellness') {
       const wellnessCats = ['Baby Care', 'Personal Care', 'Vitamins & Supplements', 'First Aid'];
-      result = result.filter(m => wellnessCats.includes(m.category));
+      result = result.filter(m => wellnessCats && wellnessCats.includes(m.category));
+    } else if (categoryFilter !== 'All') {
+      // Handle specific categories from the dropdown menu
+      result = result.filter(m => m.category === categoryFilter);
     }
 
     // Search Filtering
@@ -247,7 +250,7 @@ const AdminMedicinesPage = () => {
                 <h2>{medicine.name}</h2>
                 <div className="manufacturer-name">{medicine.manufacturer || 'General Medicine'}</div>
                 <p className="product-snippet">
-                  {medicine.description || 'No description available for this product.'}
+                  {(medicine.description || 'No description available for this product.').replace(/<[^>]*>?/gm, '')}
                 </p>
 
                 <div className="card-footer">

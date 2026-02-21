@@ -2,11 +2,13 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { validateRequest } from '../middleware/validate.js';
+import { paymentProofUpload } from '../middleware/upload.middleware.js';
 import {
   checkout,
   listOrders,
   getOrderDetails,
-  downloadInvoice
+  downloadInvoice,
+  uploadPaymentProof
 } from '../controllers/order.controller.js';
 
 const router = Router();
@@ -15,8 +17,8 @@ const checkoutValidators = [
   body('fullName').trim().notEmpty().withMessage('Full name is required'),
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('phone')
-    .matches(/^[0-9]{10,15}$/)
-    .withMessage('Phone number must be 10-15 digits'),
+    .matches(/^[0-9+\- ]{10,20}$/)
+    .withMessage('Please enter a valid phone number'),
   body('address').trim().notEmpty().withMessage('Address is required'),
   body('city').trim().notEmpty().withMessage('City is required'),
   body('postalCode').trim().notEmpty().withMessage('Postal code is required'),
@@ -46,7 +48,7 @@ const checkoutValidators = [
     .isLength({ max: 150 })
     .withMessage('Reference is too long'),
   body('payment.receiptUrl')
-    .optional({ nullable: true })
+    .optional({ checkFalsy: true })
     .isURL()
     .withMessage('Receipt URL must be valid'),
   body('priority')
@@ -58,7 +60,25 @@ const checkoutValidators = [
 router.post('/checkout', authenticate, checkoutValidators, validateRequest, checkout);
 router.get('/', authenticate, listOrders);
 router.get('/:id/invoice', authenticate, downloadInvoice);
+
+router.post(
+  '/:id/payment-proof',
+  authenticate,
+  (req, res, next) => {
+    paymentProofUpload.single('proof')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({
+          error: {
+            message: err.message || 'Failed to upload payment proof'
+          }
+        });
+      }
+      next();
+    });
+  },
+  uploadPaymentProof
+);
+
 router.get('/:id', authenticate, getOrderDetails);
 
 export default router;
-

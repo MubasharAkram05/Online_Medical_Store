@@ -525,6 +525,51 @@
   text-align: center;
 }
 
+.verification-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.verification-details p {
+  margin: 0 !important;
+}
+
+.view-proof-link {
+  color: #2563eb;
+  font-size: 0.85rem;
+  text-decoration: none;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.view-proof-link:hover {
+  text-decoration: underline;
+}
+
+.status-text-completed {
+  color: #059669;
+  font-weight: 600;
+}
+
+.status-text-pending {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.verify-payment-btn {
+  background-color: #059669 !important;
+  color: white !important;
+  border: none !important;
+}
+
+.verify-payment-btn:hover {
+  background-color: #047857 !important;
+}
+
 .payment-completed {
   color: #047857;
 }
@@ -537,19 +582,100 @@
   color: #b91c1c;
 }
 
+.view-receipt-btn {
+  padding: 0.4rem 0.8rem !important;
+  font-size: 0.85rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  border-radius: 8px !important;
+  color: #3b82f6 !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  margin-top: 0.5rem;
+}
+
+.view-receipt-btn:hover {
+  background-color: rgba(59, 130, 246, 0.05) !important;
+  border-color: #3b82f6 !important;
+}
+
+.receipt-preview-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 400px;
+}
+
+.receipt-preview-container .prescription-image {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+}
+
+.receipt-preview-container .prescription-iframe {
+  width: 100%;
+  height: 70vh;
+  border: none;
+}
+
+.view-prescription-modal-footer .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  width: 100%;
+}
+
 .prescription-badge {
-  display: inline-block;
-  margin-left: 0.5rem;
-  padding: 0.25rem 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.35rem;
+  padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  background: rgba(239, 68, 68, 0.2);
-  color: #b91c1c;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  border: 1px solid rgba(239, 68, 68, 0.3);
   white-space: nowrap;
+}
+
+.prescription-badge.status-pending {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.prescription-badge.status-approved {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.prescription-badge.status-declined {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.prescription-status-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.prescription-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.product-name-cell {
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 1024px) {
@@ -869,4 +995,3 @@
     font-size: 0.85rem;
   }
 }
-

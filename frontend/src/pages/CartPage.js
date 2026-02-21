@@ -4,13 +4,15 @@ import { toast } from 'react-toastify';
 import { useCart } from '../context/CartContext';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
+import PrescriptionModal from '../components/prescription/PrescriptionModal';
 import { medicineService } from '../services/medicineService';
 import './CartPage.css';
 
 const CartPage = () => {
   const navigate = useNavigate();
-  const { cartItems, removeFromCart, updateQuantity, getCartTotal, clearCart } = useCart();
+  const { cartItems, orderPrescription, setOrderPrescription, removeFromCart, updateQuantity, getCartTotal, clearCart } = useCart();
   const [interactionWarnings, setInteractionWarnings] = useState([]);
+  const [showRxModal, setShowRxModal] = useState(false);
 
   useEffect(() => {
     const fetchInteractions = async () => {
@@ -33,18 +35,31 @@ const CartPage = () => {
   }, [cartItems]);
 
   const handleQuantityChange = (medicineId, newQuantity) => {
-    if (newQuantity <= 0) {
-      removeFromCart(medicineId);
-    } else {
-      updateQuantity(medicineId, newQuantity);
-    }
+    updateQuantity(medicineId, newQuantity);
   };
 
+  const handleRemoveItem = (medicineId) => {
+    removeFromCart(medicineId);
+    toast.info('Item removed from cart');
+  };
+
+  const requiresPrescription = cartItems.some(item => item.requires_prescription);
+
   const handleCheckout = () => {
-    if (cartItems.length === 0) {
+    if (cartItems.length === 0) return;
+
+    if (requiresPrescription && !orderPrescription) {
+      toast.error('Please upload a prescription for this order before checking out.');
       return;
     }
+
     navigate('/checkout');
+  };
+
+  const handlePrescriptionSelect = (prescription) => {
+    setOrderPrescription(prescription);
+    toast.success('Prescription attached to order');
+    setShowRxModal(false);
   };
 
   if (cartItems.length === 0) {
@@ -93,6 +108,41 @@ const CartPage = () => {
           </Card>
         )}
 
+        {requiresPrescription && (
+          <Card className={`order-rx-card ${orderPrescription ? 'success' : 'warning-border'}`}>
+            <div className="rx-card-content">
+              <div className="rx-card-text">
+                <div className="rx-card-header">
+                  <span className="rx-icon">📋</span>
+                  <h3>Order Prescription</h3>
+                </div>
+                <p>One or more items in your cart require a prescription. Please upload one for the entire order.</p>
+
+                {orderPrescription ? (
+                  <div className="order-rx-status uploaded">
+                    <span className="status-badge verified">✅ Uploaded: {orderPrescription.fileName}</span>
+                    <button className="change-rx-link" onClick={() => setShowRxModal(true)}>Change</button>
+                  </div>
+                ) : (
+                  <div className="order-rx-status missing">
+                    <span className="status-badge warning">⚠️ Missing Prescription</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="rx-card-actions">
+                <Button
+                  variant={orderPrescription ? "outline" : "primary"}
+                  onClick={() => setShowRxModal(true)}
+                >
+                  {orderPrescription ? "Update Prescription" : "Upload Prescription"}
+                </Button>
+                {/* Reuse Previous option is built into the PrescriptionModal */}
+              </div>
+            </div>
+          </Card>
+        )}
+
         <div className="cart-container">
           <div className="cart-items">
             <div className="cart-header">
@@ -106,10 +156,10 @@ const CartPage = () => {
               <Card key={item.id} className="cart-item">
                 <div className="cart-item-image">
                   <img
-                    src={item.image || 'https://via.placeholder.com/200x200/20b2aa/ffffff?text=Product'}
+                    src={item.image || 'https://placehold.co/200x200/20b2aa/ffffff?text=Product'}
                     alt={item.name}
                     onError={(e) => {
-                      e.target.src = 'https://via.placeholder.com/200x200/20b2aa/ffffff?text=Product';
+                      e.target.src = 'https://placehold.co/200x200/20b2aa/ffffff?text=Product';
                     }}
                     loading="lazy"
                   />
@@ -119,7 +169,12 @@ const CartPage = () => {
                   <Link to={`/medicines/${item.id}`}>
                     <h3 className="cart-item-name">{item.name}</h3>
                   </Link>
-                  <p className="cart-item-description">{item.description}</p>
+
+                  {item.requires_prescription && (
+                    <span className="rx-required-tag">℞ Prescription Required</span>
+                  )}
+
+                  <p className="cart-item-description">{(item.description || '').replace(/<[^>]*>?/gm, '')}</p>
                   <div className="cart-item-price">
                     PKR {(item.price * item.quantity).toFixed(2)}
                   </div>
@@ -143,7 +198,6 @@ const CartPage = () => {
                         handleQuantityChange(item.id, val);
                       }}
                       min="1"
-                      max={item.quantity || 999}
                       className="quantity-input"
                     />
                     <button
@@ -158,7 +212,7 @@ const CartPage = () => {
 
                 <div className="cart-item-actions">
                   <button
-                    onClick={() => removeFromCart(item.id)}
+                    onClick={() => handleRemoveItem(item.id)}
                     className="remove-btn"
                     title="Remove from cart"
                   >
@@ -172,24 +226,24 @@ const CartPage = () => {
           <div className="cart-summary">
             <Card className="summary-card">
               <h2>Order Summary</h2>
-              
+
               <div className="summary-row">
                 <span>Subtotal:</span>
                 <span>PKR {getCartTotal().toFixed(2)}</span>
               </div>
-              
+
               <div className="summary-row">
                 <span>Shipping:</span>
                 <span>PKR 200.00</span>
               </div>
-              
+
               <div className="summary-row">
                 <span>Tax:</span>
                 <span>PKR {(getCartTotal() * 0.05).toFixed(2)}</span>
               </div>
-              
+
               <div className="summary-divider"></div>
-              
+
               <div className="summary-row total">
                 <span>Total:</span>
                 <span>PKR {(getCartTotal() + 200 + getCartTotal() * 0.05).toFixed(2)}</span>
@@ -200,6 +254,8 @@ const CartPage = () => {
                 size="large"
                 onClick={handleCheckout}
                 className="checkout-button"
+                disabled={requiresPrescription && !orderPrescription}
+                title={requiresPrescription && !orderPrescription ? "Please upload a prescription for this order" : ""}
               >
                 Proceed to Checkout
               </Button>
@@ -211,9 +267,17 @@ const CartPage = () => {
           </div>
         </div>
       </div>
+
+      <PrescriptionModal
+        isOpen={showRxModal}
+        onClose={() => setShowRxModal(false)}
+        onPrescriptionSelect={handlePrescriptionSelect}
+      // No item-specific medicine passed since it's order-level
+      />
     </div>
   );
 };
 
 export default CartPage;
+
 

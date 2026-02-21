@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS medicines (
   dosage_instructions TEXT,
   side_effects TEXT,
   interactions JSON,
+  sort_order INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -112,8 +113,15 @@ CREATE TABLE IF NOT EXISTS order_items (
   quantity INT NOT NULL,
   unit_price DECIMAL(10, 2) NOT NULL,
   total_price DECIMAL(10, 2) NOT NULL,
+  prescription_id BIGINT,
+  prescription_status ENUM('pending', 'approved', 'declined') DEFAULT 'pending',
+  prescription_notes TEXT,
+  prescription_verified_by BIGINT,
+  prescription_verified_at DATETIME,
   FOREIGN KEY (order_id) REFERENCES orders(id),
-  FOREIGN KEY (medicine_id) REFERENCES medicines(id)
+  FOREIGN KEY (medicine_id) REFERENCES medicines(id),
+  FOREIGN KEY (prescription_id) REFERENCES prescriptions(id),
+  FOREIGN KEY (prescription_verified_by) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS payments (

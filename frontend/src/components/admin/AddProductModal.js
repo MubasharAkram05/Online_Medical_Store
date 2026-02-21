@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import Button from '../common/Button';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import './AddProductModal.css';
 
 const initialForm = {
@@ -20,6 +22,23 @@ const initialForm = {
   manufacturing_date: '',
   supplier_id: ''
 };
+
+const QUILL_MODULES = {
+  toolbar: [
+    [{ 'header': [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    [{ 'align': [] }],
+    ['clean']
+  ],
+};
+
+const QUILL_FORMATS = [
+  'header',
+  'bold', 'italic', 'underline', 'strike',
+  'list', 'bullet',
+  'align'
+];
 
 const AddProductModal = ({ isOpen, onClose, onSave, editingMedicine, suppliers, categorySuggestions }) => {
   const [form, setForm] = useState(initialForm);
@@ -272,36 +291,45 @@ const AddProductModal = ({ isOpen, onClose, onSave, editingMedicine, suppliers, 
               </div>
             </label>
 
-            <label className="textarea-field">
+            <div className="textarea-field rich-editor-field full-width">
               <span>Description</span>
-              <textarea
-                rows="3"
+              <ReactQuill
+                theme="snow"
                 value={form.description}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, description: e.target.value }))
+                onChange={(content) =>
+                  setForm((prev) => ({ ...prev, description: content }))
                 }
+                modules={QUILL_MODULES}
+                formats={QUILL_FORMATS}
+                placeholder="Enter detailed product description..."
               />
-            </label>
-            <label className="textarea-field">
+            </div>
+            <div className="textarea-field rich-editor-field">
               <span>Dosage Instructions</span>
-              <textarea
-                rows="3"
+              <ReactQuill
+                theme="snow"
                 value={form.dosageInstructions}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, dosageInstructions: e.target.value }))
+                onChange={(content) =>
+                  setForm((prev) => ({ ...prev, dosageInstructions: content }))
                 }
+                modules={QUILL_MODULES}
+                formats={QUILL_FORMATS}
+                placeholder="Enter detailed dosage instructions..."
               />
-            </label>
-            <label className="textarea-field">
+            </div>
+            <div className="textarea-field rich-editor-field">
               <span>Side Effects</span>
-              <textarea
-                rows="3"
+              <ReactQuill
+                theme="snow"
                 value={form.sideEffects}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, sideEffects: e.target.value }))
+                onChange={(content) =>
+                  setForm((prev) => ({ ...prev, sideEffects: content }))
                 }
+                modules={QUILL_MODULES}
+                formats={QUILL_FORMATS}
+                placeholder="Enter potential side effects..."
               />
-            </label>
+            </div>
             <label>
               <span>Expiry Date</span>
               <input
