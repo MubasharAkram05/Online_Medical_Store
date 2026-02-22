@@ -32,6 +32,64 @@ const AdminOrdersPage = () => {
     return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
   };
 
+  // Helper function to determine prescription verification status
+  const getPrescriptionStatus = (order) => {
+    if (!order.items || order.items.length === 0) {
+      return null;
+    }
+
+    // Check if order has any prescription-required items
+    const hasPrescriptionRequired = order.items.some((item) => {
+      return (
+        item.requiresPrescription === true ||
+        item.requiresPrescription === 1 ||
+        item.requires_prescription === true ||
+        item.requires_prescription === 1 ||
+        item.requiresPrescription === 'true' ||
+        item.requires_prescription === 'true'
+      );
+    });
+
+    if (!hasPrescriptionRequired) {
+      return null; // No prescription required
+    }
+
+    // Get all prescription-required items
+    const prescriptionItems = order.items.filter((item) => {
+      return (
+        item.requiresPrescription === true ||
+        item.requiresPrescription === 1 ||
+        item.requires_prescription === true ||
+        item.requires_prescription === 1 ||
+        item.requiresPrescription === 'true' ||
+        item.requires_prescription === 'true'
+      );
+    });
+
+    if (prescriptionItems.length === 0) {
+      return null;
+    }
+
+    // Check if any prescription is rejected
+    const hasRejected = prescriptionItems.some(
+      (item) => item.prescriptionStatus === 'declined' || item.prescriptionStatus === 'rejected'
+    );
+    if (hasRejected) {
+      return { status: 'rejected', label: 'Prescription Rejected' };
+    }
+
+    // Check if all prescriptions are approved
+    const allApproved = prescriptionItems.every(
+      (item) => item.prescriptionStatus === 'approved' || item.prescriptionStatus === 'verified'
+    );
+    if (allApproved) {
+      return { status: 'approved', label: 'Prescription Approved' };
+    }
+
+    // Otherwise, it's pending
+    return { status: 'pending', label: 'Prescription Verification Pending' };
+  };
+
   const loadOrders = useCallback(async () => {
     const response = await adminService.getOrders();
     const ordersData = response.data?.orders || [];
@@ -598,11 +656,18 @@ const AdminOrdersPage = () => {
           {filteredOrders.length === 0 ? (
             <div className="empty-card">No orders match the selected filter.</div>
           ) : (
-            filteredOrders.map((order) => (
+            filteredOrders.map((order) => {
+              const prescriptionStatus = getPrescriptionStatus(order);
+              return (
               <div className="order-card" key={order.id}>
                 <header>
                   <div>
                     <h3>Order #{order.orderNumber}</h3>
+                    {prescriptionStatus && (
+                      <span className={`prescription-status-badge prescription-${prescriptionStatus.status}`}>
+                        {prescriptionStatus.label}
+                      </span>
+                    )}
                     <p>User: {order.customer?.name || 'Unknown'}</p>
                     <p>Email: {order.customer?.email || '—'}</p>
                     <p>Placed on: {order.createdAt ? new Date(order.createdAt).toLocaleString() : '—'}</p>
@@ -702,7 +767,8 @@ const AdminOrdersPage = () => {
                   </aside>
                 </div>
               </div>
-            ))
+            );
+            })
           )}
         </div>
       </section>

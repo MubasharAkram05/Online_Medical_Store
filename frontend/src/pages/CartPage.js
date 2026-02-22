@@ -14,6 +14,18 @@ const CartPage = () => {
   const [interactionWarnings, setInteractionWarnings] = useState([]);
   const [showRxModal, setShowRxModal] = useState(false);
 
+  // Always start at top when Cart page loads
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    const scrollToTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    };
+    requestAnimationFrame(() => {
+      scrollToTop();
+      setTimeout(scrollToTop, 50);
+    });
+  }, []);
+
   useEffect(() => {
     const fetchInteractions = async () => {
       if (cartItems.length < 2) {

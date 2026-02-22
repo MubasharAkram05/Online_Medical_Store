@@ -33,6 +33,32 @@ const MedicinesPage = () => {
   const [sortOption, setSortOption] = useState('relevance');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [scrollRestored, setScrollRestored] = useState(false);
+
+  // Restore scroll position when returning from detail page
+  useEffect(() => {
+    const savedScrollPosition = sessionStorage.getItem('medicinesPageScrollPosition');
+    if (savedScrollPosition && !scrollRestored && !loading && medicines.length > 0) {
+      // Wait for content to render, then restore scroll position
+      const restoreScroll = () => {
+        const scrollY = parseInt(savedScrollPosition, 10);
+        window.scrollTo({
+          top: scrollY,
+          behavior: 'instant'
+        });
+        setScrollRestored(true);
+        // Clear the saved position after restoring
+        sessionStorage.removeItem('medicinesPageScrollPosition');
+      };
+
+      // Use multiple strategies to ensure DOM is ready
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          restoreScroll();
+        });
+      });
+    }
+  }, [scrollRestored, loading, medicines.length]);
 
   useEffect(() => {
     const fetchMedicines = async () => {

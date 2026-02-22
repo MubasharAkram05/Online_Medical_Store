@@ -21,8 +21,18 @@ const MedicineCard = ({ medicine }) => {
     toast.success(`${medicine.name} added to cart!`);
   };
 
+  const handleCardClick = (e) => {
+    // Save scroll position before navigating
+    const scrollPosition = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+    sessionStorage.setItem('medicinesPageScrollPosition', scrollPosition.toString());
+  };
+
   return (
-    <Link to={`/medicines/${medicine.id}`} className="medicine-card-link">
+    <Link 
+      to={`/medicines/${medicine.id}`} 
+      className="medicine-card-link"
+      onClick={handleCardClick}
+    >
       <div className="medicine-card">
         <div className="medicine-image">
           <img

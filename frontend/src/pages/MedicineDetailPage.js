@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { medicineService } from '../services/medicineService';
 import { prescriptionService } from '../services/prescriptionService';
@@ -19,6 +19,47 @@ const MedicineDetailPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
   const [interactionWarnings, setInteractionWarnings] = useState([]);
+
+  // Force scroll to top when page loads
+  useEffect(() => {
+    // Immediate scroll to top
+    window.scrollTo(0, 0);
+    
+    // Use requestAnimationFrame to ensure it happens after any async rendering
+    const scrollToTop = () => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: 'instant'
+      });
+    };
+
+    requestAnimationFrame(() => {
+      scrollToTop();
+      // Double-check after a short delay to catch any delayed renders
+      setTimeout(scrollToTop, 100);
+    });
+
+    // Monitor for a brief period to catch any delayed scrolls (only if scroll position changes)
+    let lastScrollY = 0;
+    const scrollMonitor = setInterval(() => {
+      const currentScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+      if (currentScrollY > 0 && currentScrollY !== lastScrollY) {
+        window.scrollTo(0, 0);
+      }
+      lastScrollY = currentScrollY;
+    }, 100);
+
+    // Clean up after 1 second
+    const cleanup = setTimeout(() => {
+      clearInterval(scrollMonitor);
+    }, 1000);
+
+    return () => {
+      clearInterval(scrollMonitor);
+      clearTimeout(cleanup);
+    };
+  }, [id]);
 
   useEffect(() => {
     const fetchMedicine = async () => {
@@ -87,7 +128,12 @@ const MedicineDetailPage = () => {
   return (
     <div className="medicine-detail-page">
       <div className="container">
-        <button onClick={() => navigate(-1)} className="back-button">
+        <button 
+          onClick={() => {
+            navigate('/medicines');
+          }} 
+          className="back-button"
+        >
           ← Back to Products
         </button>
 
