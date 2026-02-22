@@ -23,7 +23,8 @@ import {
   adminDeleteSupplier,
   adminApprovePayment,
   adminVerifyOrderItemPrescription,
-  adminVerifyOrderPrescription
+  adminVerifyOrderPrescription,
+  adminClearOrderData
 } from '../controllers/admin.controller.js';
 import { authenticate, authorizeRoles } from '../middleware/auth.middleware.js';
 import { validateRequest } from '../middleware/validate.js';
@@ -158,6 +159,7 @@ router.patch(
   adminUpdateOrderStatus
 );
 router.patch('/orders/:id/approve-payment', adminApprovePayment);
+router.delete('/orders/clear', adminClearOrderData);
 router.patch(
   '/orders/items/:orderItemId/prescription',
   [

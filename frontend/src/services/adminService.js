@@ -48,6 +48,7 @@ export const adminService = {
   getSuppliers: () => api.get('/admin/suppliers'),
   createSupplier: (data) => api.post('/admin/suppliers', data),
   updateSupplier: (id, data) => api.put(`/admin/suppliers/${id}`, data),
-  deleteSupplier: (id) => api.delete(`/admin/suppliers/${id}`)
+  deleteSupplier: (id) => api.delete(`/admin/suppliers/${id}`),
+  clearOrderData: (params) => api.delete('/admin/orders/clear', { data: params })
 };
 

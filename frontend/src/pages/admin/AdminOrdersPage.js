@@ -5,7 +5,7 @@ import Card from '../../components/common/Card';
 import { adminService } from '../../services/adminService';
 import './AdminOrdersPage.css';
 
-const STATUS_OPTIONS = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+const STATUS_OPTIONS = ['pending', 'pending_prescription', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
 const PAYMENT_STATUS_OPTIONS = ['pending', 'completed', 'failed', 'refunded'];
 const PRIORITY_OPTIONS = ['normal', 'high', 'urgent'];
 
@@ -22,16 +22,33 @@ const AdminOrdersPage = () => {
   const [viewingPrescription, setViewingPrescription] = useState(null);
   const [loadingPrescriptions, setLoadingPrescriptions] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState(null);
+  const [clearingRange, setClearingRange] = useState('custom');
+  const [customRange, setCustomRange] = useState({ start: '', end: '' });
+  const [isClearing, setIsClearing] = useState(false);
+
+  const formatStatus = (status) => {
+    if (!status) return '—';
+    if (status === 'pending_prescription') return 'Pending Prescription Approval';
+    return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
+  };
 
   const loadOrders = useCallback(async () => {
     const response = await adminService.getOrders();
     const ordersData = response.data?.orders || [];
-    // Debug: Check if requiresPrescription is present
-    if (ordersData.length > 0 && ordersData[0].items) {
-      console.log('Sample order item:', ordersData[0].items[0]);
-    }
     setOrders(ordersData);
   }, []);
+
+  const handleRefresh = async () => {
+    try {
+      setStatusFilter('');
+      setClearingRange('custom');
+      setCustomRange({ start: '', end: '' });
+      await loadOrders();
+      toast.success('Orders refreshed and filters cleared.');
+    } catch (error) {
+      toast.error('Unable to refresh orders. Please try again.');
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -370,7 +387,7 @@ const AdminOrdersPage = () => {
   );
 
   const pendingOrders = useMemo(
-    () => orders.filter((order) => order.status === 'pending'),
+    () => orders.filter((order) => order.status === 'pending' || order.status === 'pending_prescription'),
     [orders]
   );
 
@@ -413,6 +430,40 @@ const AdminOrdersPage = () => {
       value || 0
     );
 
+  const handleClearData = async () => {
+    let rangeText = '';
+    let params = {};
+
+    if (clearingRange === 'all') {
+      rangeText = 'all data';
+      params = { days: 'all' };
+    } else if (clearingRange === 'custom') {
+      if (!customRange.start || !customRange.end) {
+        toast.warning('Please select both start and end dates.');
+        return;
+      }
+      rangeText = `data from ${customRange.start} to ${customRange.end}`;
+      params = { startDate: customRange.start, endDate: customRange.end };
+    } else {
+      rangeText = `${clearingRange} days of data`;
+      params = { days: clearingRange };
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${rangeText}? This action cannot be undone.`)) return;
+
+    try {
+      setIsClearing(true);
+      const response = await adminService.clearOrderData(params);
+      toast.success(response.data.message || 'Data cleared successfully.');
+      await loadOrders();
+    } catch (error) {
+      console.error('Clear data error:', error);
+      toast.error(error.response?.data?.error?.message || 'Failed to clear data.');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="admin-orders">
@@ -433,77 +484,106 @@ const AdminOrdersPage = () => {
             <option value="">All statuses</option>
             {STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
-                {status}
+                {formatStatus(status)}
               </option>
             ))}
           </select>
-          <Button variant="outline" onClick={loadOrders}>
+          <Button variant="outline" onClick={handleRefresh}>
             Refresh
           </Button>
+          <div className="clear-data-panel">
+            <span className="clear-data-panel__label">🗑️ Clear Data</span>
+            <div className="clear-data-daterow">
+              <input
+                type="date"
+                value={customRange.start}
+                onChange={(e) => setCustomRange({ ...customRange, start: e.target.value })}
+                className="date-input"
+              />
+              <span className="date-separator">→</span>
+              <input
+                type="date"
+                value={customRange.end}
+                onChange={(e) => setCustomRange({ ...customRange, end: e.target.value })}
+                className="date-input"
+              />
+            </div>
+            <button
+              type="button"
+              className="clear-data-confirm-btn"
+              onClick={handleClearData}
+              disabled={isClearing}
+            >
+              {isClearing ? (
+                <><span className="clear-spinner" />Clearing…</>
+              ) : (
+                <>🗑️ Delete</>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
       <section className="orders-section">
         <h2>Active Carts</h2>
-        {pendingOrders.length === 0 ? (
-          <div className="empty-card">No active carts at the moment.</div>
-        ) : (
-          pendingOrders.slice(0, 3).map((order) => (
-            <div className="cart-card" key={order.id}>
-              <header>
-                <div>
-                  <h3>User: {order.customer?.name || 'Unknown'}</h3>
-                  <p>{order.customer?.email || '—'}</p>
+        <div className="active-carts-scroll-area">
+          {pendingOrders.length === 0 ? (
+            <div className="empty-card">No active carts at the moment.</div>
+          ) : (
+            pendingOrders.map((order) => (
+              <div className="cart-card" key={order.id}>
+                <header>
+                  <div>
+                    <h3>User: {order.customer?.name || 'Unknown'}</h3>
+                    <p>{order.customer?.email || '—'}</p>
+                  </div>
+                  <span className="cart-total">{formatCurrency(order.totalAmount)}</span>
+                </header>
+                <div className="cart-meta">
+                  <span>
+                    Items: <strong>{order.items?.length || 0}</strong>
+                  </span>
+                  <span>
+                    Updated:{' '}
+                    <strong>{order.createdAt ? new Date(order.createdAt).toLocaleString() : '—'}</strong>
+                  </span>
                 </div>
-                <span className="cart-total">{formatCurrency(order.totalAmount)}</span>
-              </header>
-              <div className="cart-meta">
-                <span>
-                  Items: <strong>{order.items?.length || 0}</strong>
-                </span>
-                <span>
-                  Updated:{' '}
-                  <strong>{order.createdAt ? new Date(order.createdAt).toLocaleString() : '—'}</strong>
-                </span>
-              </div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Quantity</th>
-                    <th>Price</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(order.items || []).map((item) => {
-                    const needsPrescription =
-                      item.requiresPrescription === true ||
-                      item.requiresPrescription === 1 ||
-                      item.requires_prescription === true ||
-                      item.requires_prescription === 1 ||
-                      item.requiresPrescription === 'true' ||
-                      item.requires_prescription === 'true';
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Quantity</th>
+                      <th>Price</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(order.items || []).map((item) => {
+                      const needsPrescription =
+                        item.requiresPrescription === true ||
+                        item.requiresPrescription === 1 ||
+                        item.requires_prescription === true ||
+                        item.requires_prescription === 1 ||
+                        item.requiresPrescription === 'true' ||
+                        item.requires_prescription === 'true';
 
-                    return (
-                      <tr key={item.id}>
-                        <td>
-                          {item.name}
-                          {needsPrescription && (
-                            <span className="prescription-badge">Prescription Required</span>
-                          )}
-                        </td>
-                        <td>{item.quantity}</td>
-                        <td>{formatCurrency(item.unitPrice)}</td>
-                        <td>{formatCurrency(item.totalPrice)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ))
-        )}
+                      return (
+                        <tr key={item.id}>
+                          <td>
+                            {item.name}
+                          </td>
+                          <td>{item.quantity}</td>
+                          <td>{formatCurrency(item.unitPrice)}</td>
+                          <td>{formatCurrency(item.totalPrice)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ))
+          )}
+        </div>
       </section>
 
       <section className="orders-section">
@@ -535,11 +615,11 @@ const AdminOrdersPage = () => {
                     >
                       {STATUS_OPTIONS.map((status) => (
                         <option key={status} value={status}>
-                          {status}
+                          {formatStatus(status)}
                         </option>
                       ))}
                     </select>
-                    <span className="status-badge">{order.status}</span>
+                    <span className="status-badge">{formatStatus(order.status)}</span>
                   </div>
                 </header>
                 <div className="order-body">
@@ -572,9 +652,6 @@ const AdminOrdersPage = () => {
                             <tr key={item.id}>
                               <td>
                                 {item.name}
-                                {needsPrescription && (
-                                  <span className="prescription-badge">Prescription Required</span>
-                                )}
                               </td>
                               <td>{item.quantity}</td>
                               <td>{formatCurrency(item.unitPrice)}</td>
@@ -638,7 +715,7 @@ const AdminOrdersPage = () => {
               <div>
                 <h3>
                   Order #{selectedOrder.orderNumber}{' '}
-                  <span className={`status-pill status-${selectedOrder.status}`}>{selectedOrder.status}</span>
+                  <span className={`status-pill status-${selectedOrder.status}`}>{formatStatus(selectedOrder.status)}</span>
                 </h3>
                 <p>Placed on {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : '—'}</p>
               </div>
@@ -779,15 +856,6 @@ const AdminOrdersPage = () => {
                             <div className="product-name-cell">
                               <div>
                                 {item.name}
-                                {needsPrescription && (
-                                  <div className="prescription-status-info">
-                                    <span className={`prescription-badge status-${item.prescriptionStatus || 'pending'}`}>
-                                      {item.prescriptionStatus === 'verified' || item.prescriptionStatus === 'approved' ? '✓ Rx' :
-                                        item.prescriptionStatus === 'declined' || item.prescriptionStatus === 'rejected' ? '✗ Rx' :
-                                          '⌛ Rx'}
-                                    </span>
-                                  </div>
-                                )}
                               </div>
                             </div>
                           </td>
@@ -876,7 +944,7 @@ const AdminOrdersPage = () => {
                 <div className="order-modal__grid payment-summary">
                   <div>
                     <strong>Payment Status</strong>
-                    <p className={`status-text-${selectedOrder.paymentStatus}`}>{selectedOrder.paymentStatus}</p>
+                    <p className={`status-text-${selectedOrder.paymentStatus}`}>{formatStatus(selectedOrder.paymentStatus)}</p>
                   </div>
                   <div className="payment-method-wrapper">
                     <strong>Payment Method</strong>
@@ -939,34 +1007,48 @@ const AdminOrdersPage = () => {
             </div>
             <div className="view-prescription-modal-body">
               <div className="prescription-view-info">
-                <div className="info-row">
-                  <strong>File Name:</strong>
-                  <span>{viewingPrescription.fileName}</span>
-                </div>
-                <div className="info-row">
-                  <strong>Status:</strong>
-                  <span className={`prescription-status-badge ${viewingPrescription.status}`}>
-                    {viewingPrescription.status}
-                  </span>
-                </div>
-                <div className="info-row">
-                  <strong>Uploaded:</strong>
-                  <span>{new Date(viewingPrescription.uploadedAt).toLocaleString()}</span>
-                </div>
-                {viewingPrescription.notes && (
+                <div className="info-grid">
                   <div className="info-row">
-                    <strong>Notes:</strong>
-                    <span>{viewingPrescription.notes}</span>
+                    <strong>File Name:</strong>
+                    <span>{viewingPrescription.fileName}</span>
                   </div>
-                )}
+                  <div className="info-row">
+                    <strong>Status:</strong>
+                    <span className={`admin-prescription-label status-${viewingPrescription.status || 'pending'}`}>
+                      {viewingPrescription.status || 'pending'}
+                    </span>
+                  </div>
+                  <div className="info-row">
+                    <strong>Uploaded:</strong>
+                    <span>{new Date(viewingPrescription.uploadedAt).toLocaleString()}</span>
+                  </div>
+                  {viewingPrescription.notes && (
+                    <div className="info-row full-width">
+                      <strong>Notes:</strong>
+                      <span>{viewingPrescription.notes}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="prescription-preview">
+
+              <div className="prescription-preview-wrapper">
+                <div className="preview-toolbar">
+                  <Button
+                    variant="outline"
+                    size="small"
+                    onClick={() => {
+                      window.open(viewingPrescription.fileUrl, '_blank');
+                    }}
+                  >
+                    🔍 Open Fullscreen
+                  </Button>
+                </div>
                 <div className="prescription-preview-content">
                   {viewingPrescription.fileMimeType?.startsWith('image/') ? (
                     <img
                       src={viewingPrescription.fileUrl}
                       alt="Prescription"
-                      className="prescription-image"
+                      className="prescription-image-full"
                       onError={(e) => {
                         e.target.style.display = 'none';
                         e.target.nextSibling.style.display = 'flex';
@@ -976,7 +1058,7 @@ const AdminOrdersPage = () => {
                     <iframe
                       src={viewingPrescription.fileUrl}
                       title="Prescription Preview"
-                      className="prescription-iframe"
+                      className="prescription-iframe-full"
                       onError={() => {
                         console.error('Failed to load prescription in iframe');
                       }}
@@ -993,16 +1075,6 @@ const AdminOrdersPage = () => {
                       Open in New Tab
                     </Button>
                   </div>
-                </div>
-                <div className="preview-actions">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      window.open(viewingPrescription.fileUrl, '_blank');
-                    }}
-                  >
-                    Open in New Tab
-                  </Button>
                 </div>
               </div>
             </div>
@@ -1055,20 +1127,33 @@ const AdminOrdersPage = () => {
               <button className="modal-close-btn" onClick={() => setViewingReceipt(null)}>×</button>
             </div>
             <div className="view-prescription-modal-body">
-              <div className="receipt-preview-container">
-                {viewingReceipt.url.toLowerCase().endsWith('.pdf') ? (
-                  <iframe
-                    src={viewingReceipt.url}
-                    title="Receipt PDF"
-                    className="prescription-iframe"
-                  />
-                ) : (
-                  <img
-                    src={viewingReceipt.url}
-                    alt="Payment Receipt"
-                    className="prescription-image"
-                  />
-                )}
+              <div className="prescription-preview-wrapper">
+                <div className="preview-toolbar">
+                  <Button
+                    variant="outline"
+                    size="small"
+                    onClick={() => {
+                      window.open(viewingReceipt.url, '_blank');
+                    }}
+                  >
+                    🔍 Open Fullscreen
+                  </Button>
+                </div>
+                <div className="receipt-preview-container">
+                  {viewingReceipt.url.toLowerCase().endsWith('.pdf') ? (
+                    <iframe
+                      src={viewingReceipt.url}
+                      title="Receipt PDF"
+                      className="prescription-iframe-full"
+                    />
+                  ) : (
+                    <img
+                      src={viewingReceipt.url}
+                      alt="Payment Receipt"
+                      className="prescription-image-full"
+                    />
+                  )}
+                </div>
               </div>
             </div>
             <div className="view-prescription-modal-footer">

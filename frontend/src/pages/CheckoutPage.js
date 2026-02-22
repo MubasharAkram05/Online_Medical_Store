@@ -3,15 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { useCart } from '../context/CartContext';
-import { orderService } from '../services/orderService';
 import { medicineService } from '../services/medicineService';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import PrescriptionModal from '../components/prescription/PrescriptionModal';
-import PaymentMethodSelector from '../components/payment/PaymentMethodSelector';
-import CardPaymentForm from '../components/payment/CardPaymentForm';
-import BankTransferForm from '../components/payment/BankTransferForm';
-import WalletPaymentForm from '../components/payment/WalletPaymentForm';
+import ShippingInformationModal from '../components/checkout/ShippingInformationModal';
 import './CheckoutPage.css';
 
 const DEFAULT_SHIPPING_VALUES = {
@@ -48,14 +44,8 @@ const resolveShippingStorageKey = () => {
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems, orderPrescription, getCartTotal, clearCart, removeUnavailableItems } = useCart();
-  const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('cod');
+  const [showShippingModal, setShowShippingModal] = useState(false);
   const [priority, setPriority] = useState('normal');
-  const [paymentDetails, setPaymentDetails] = useState({
-    transactionId: '',
-    reference: '',
-    receiptUrl: ''
-  });
 
   const [shippingStorageKey, setShippingStorageKey] = useState(() => {
     if (typeof window === 'undefined') {
@@ -141,6 +131,7 @@ const CheckoutPage = () => {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object') {
           initialValues = { ...initialValues, ...parsed };
+          if (parsed.priority) setPriority(parsed.priority);
         }
       } else {
         const rawUser = window.localStorage.getItem('user');
@@ -171,118 +162,28 @@ const CheckoutPage = () => {
 
     const handler = window.setTimeout(() => {
       try {
-        window.localStorage.setItem(shippingStorageKey, JSON.stringify(watchedShipping));
+        window.localStorage.setItem(
+          shippingStorageKey,
+          JSON.stringify({ ...watchedShipping, priority })
+        );
       } catch (error) {
         console.error('Error saving shipping info to localStorage:', error);
       }
     }, 300);
 
     return () => window.clearTimeout(handler);
-  }, [watchedShipping, shippingStorageKey, shippingInitialized]);
+  }, [watchedShipping, priority, shippingStorageKey, shippingInitialized]);
 
   const subtotal = getCartTotal();
   const shipping = 200;
   const tax = subtotal * 0.05;
   const total = subtotal + shipping + tax;
-
-  const handlePaymentMethodChange = (value) => {
-    setPaymentMethod(value);
-    setPaymentDetails({
-      transactionId: '',
-      reference: '',
-      receiptUrl: '',
-      cardNumber: '',
-      expiryDate: '',
-      cvv: '',
-      cardName: '',
-      phone: ''
-    });
-  };
-
-  const handlePaymentDetailChange = (key, value) => {
-    setPaymentDetails(prev => ({ ...prev, [key]: value }));
-  };
-
   const requiresPrescription = cartItems.some(item => item.requires_prescription);
 
-  const onSubmit = async (data) => {
-    if (requiresPrescription && !orderPrescription) {
-      toast.error('A physical prescription is required for this order.');
-      return;
-    }
-
-    if (cartItems.length === 0) {
-      toast.error('Your cart is empty');
-      return;
-    }
-
-    if (paymentMethod === 'card') {
-      if (!paymentDetails.cardNumber || !paymentDetails.expiryDate || !paymentDetails.cvv || !paymentDetails.cardName) {
-        toast.error('Please complete all card details.');
-        return;
-      }
-      if (paymentDetails.cardNumber.replace(/\s/g, '').length < 16) {
-        toast.error('Invalid card number.');
-        return;
-      }
-    } else if (paymentMethod !== 'cod') {
-      if (!paymentDetails.transactionId.trim()) {
-        toast.error('Please provide the transaction ID for your payment.');
-        return;
-      }
-      if (!paymentDetails.proofFile) {
-        toast.error('Please upload a proof of payment screenshot.');
-        return;
-      }
-    }
-
-    setLoading(true);
-    try {
-      if (typeof window !== 'undefined' && shippingStorageKey) {
-        try {
-          window.localStorage.setItem(shippingStorageKey, JSON.stringify(data));
-        } catch (error) {
-          console.error('Error persisting shipping info to localStorage:', error);
-        }
-      }
-      const orderData = {
-        ...data,
-        payment_method: paymentMethod,
-        priority,
-        prescription_id: orderPrescription?.id,
-        items: cartItems.map((item) => ({
-          medicine_id: item.id,
-          quantity: item.quantity,
-          price: item.price
-        })),
-        total_amount: total,
-        payment: paymentMethod === 'cod'
-          ? undefined
-          : {
-            ...paymentDetails,
-            transactionId: paymentMethod === 'card'
-              ? `CARD-MOCK-${Date.now()}`
-              : paymentDetails.transactionId.trim()
-          }
-      };
-
-      const response = await orderService.createOrder(orderData);
-
-      if (paymentDetails.proofFile) {
-        const formData = new FormData();
-        formData.append('proof', paymentDetails.proofFile);
-        await orderService.uploadPaymentProof(response.data.order.id, formData);
-      }
-
-      toast.success(response.data?.message || 'Order placed successfully!');
-      clearCart();
-      navigate(`/orders/${response.data.order.id}`);
-    } catch (error) {
-      const message = error.response?.data?.error?.message || 'Failed to place order.';
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
+  const handleShippingModalSave = () => {
+    // Form validation is handled by react-hook-form
+    setShowShippingModal(false);
+    toast.success('Shipping information saved');
   };
 
   if (cartItems.length === 0) {
@@ -329,215 +230,114 @@ const CheckoutPage = () => {
             </Card>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="checkout-form">
+          <div className="checkout-form">
             <div className="checkout-container">
               <div className="checkout-main">
-                <Card className="checkout-section">
-                  <h2>Shipping Information</h2>
-                  <div className="form-grid">
-                    <div className="form-group">
-                      <label htmlFor="fullName">Full Name *</label>
-                      <input
-                        id="fullName"
-                        {...register('fullName', { required: 'Full name is required' })}
-                        placeholder="Enter your full name"
-                        className={errors.fullName ? 'error' : ''}
-                      />
-                      {errors.fullName && <span className="error-message">{errors.fullName.message}</span>}
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="email">Email *</label>
-                      <input
-                        id="email"
-                        type="email"
-                        {...register('email', {
-                          required: 'Email is required',
-                          pattern: {
-                            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                            message: 'Invalid email address'
-                          }
-                        })}
-                        placeholder="Enter your email"
-                        className={errors.email ? 'error' : ''}
-                      />
-                      {errors.email && <span className="error-message">{errors.email.message}</span>}
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="phone">Phone Number *</label>
-                      <input
-                        id="phone"
-                        type="tel"
-                        {...register('phone', {
-                          required: 'Phone number is required',
-                          pattern: {
-                            value: /^[0-9]{10,15}$/,
-                            message: 'Invalid phone number'
-                          }
-                        })}
-                        placeholder="Enter your phone number"
-                        className={errors.phone ? 'error' : ''}
-                      />
-                      {errors.phone && <span className="error-message">{errors.phone.message}</span>}
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="priority">Order Priority</label>
-                      <select
-                        id="priority"
-                        value={priority}
-                        onChange={(e) => setPriority(e.target.value)}
-                      >
-                        <option value="normal">Normal Delivery (2-4 days)</option>
-                        <option value="high">High Priority (within 48 hours)</option>
-                        <option value="urgent">Urgent / Critical</option>
-                      </select>
-                      <small className="field-hint">
-                        Urgent orders are handled with highest priority for medical needs.
-                      </small>
-                    </div>
-
-                    <div className="form-group full-width">
-                      <label htmlFor="address">Address *</label>
-                      <input
-                        id="address"
-                        {...register('address', { required: 'Address is required' })}
-                        placeholder="Enter your address"
-                        className={errors.address ? 'error' : ''}
-                      />
-                      {errors.address && <span className="error-message">{errors.address.message}</span>}
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="city">City *</label>
-                      <input
-                        id="city"
-                        {...register('city', { required: 'City is required' })}
-                        placeholder="Enter your city"
-                        className={errors.city ? 'error' : ''}
-                      />
-                      {errors.city && <span className="error-message">{errors.city.message}</span>}
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="postalCode">Postal Code *</label>
-                      <input
-                        id="postalCode"
-                        {...register('postalCode', { required: 'Postal code is required' })}
-                        placeholder="Enter postal code"
-                        className={errors.postalCode ? 'error' : ''}
-                      />
-                      {errors.postalCode && <span className="error-message">{errors.postalCode.message}</span>}
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="checkout-section">
-                  <h2>Payment Method</h2>
-                  <PaymentMethodSelector
-                    selectedMethod={paymentMethod}
-                    onSelect={handlePaymentMethodChange}
-                  />
-
-                  {paymentMethod === 'card' && (
-                    <CardPaymentForm
-                      details={paymentDetails}
-                      onChange={handlePaymentDetailChange}
-                    />
-                  )}
-
-                  {paymentMethod === 'bank' && (
-                    <BankTransferForm
-                      details={paymentDetails}
-                      onChange={handlePaymentDetailChange}
-                    />
-                  )}
-
-                  {paymentMethod === 'wallet' && (
-                    <WalletPaymentForm
-                      details={paymentDetails}
-                      onChange={handlePaymentDetailChange}
-                    />
-                  )}
-                </Card>
-              </div>
-
-              <div className="checkout-sidebar">
-                <Card className="order-summary-card">
-                  <h2>Order Summary</h2>
-
-                  <div className="order-items">
-                    {cartItems.map((item) => (
-                      <div key={item.id} className="order-item-container">
-                        <div className="order-item">
-                          <div className="order-item-info">
-                            <span className="order-item-name">{item.name} {item.requires_prescription && <span className="rx-label-small">Rx</span>}</span>
-                            <span className="order-item-qty">Qty: {item.quantity}</span>
-                          </div>
-                          <span className="order-item-price">
-                            PKR {(item.price * item.quantity).toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {requiresPrescription && (
-                    <div className="order-rx-summary">
-                      <div className="summary-divider"></div>
-                      <div className="rx-summary-box">
-                        <span className="label">Order Prescription:</span>
-                        {orderPrescription ? (
-                          <span className="value success">✅ {orderPrescription.fileName}</span>
-                        ) : (
-                          <span className="value error">❌ Missing!</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="summary-divider"></div>
-
-                  <div className="summary-row">
-                    <span>Subtotal:</span>
-                    <span>PKR {subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="summary-row">
-                    <span>Shipping:</span>
-                    <span>PKR {shipping.toFixed(2)}</span>
-                  </div>
-                  <div className="summary-row">
-                    <span>Tax:</span>
-                    <span>PKR {tax.toFixed(2)}</span>
-                  </div>
-
-                  <div className="summary-divider"></div>
-
-                  <div className="summary-row total">
-                    <span>Total:</span>
-                    <span>PKR {total.toFixed(2)}</span>
-                  </div>
-
+                <div className="checkout-actions-section">
                   <Button
-                    type="submit"
+                    type="button"
                     variant="primary"
                     size="large"
-                    className="place-order-button"
-                    disabled={loading || (requiresPrescription && !orderPrescription)}
+                    onClick={() => setShowShippingModal(true)}
+                    className="shipping-info-button"
                   >
-                    {loading ? 'Placing Order...' : 'Place Order'}
+                    📦 Shipping Information
                   </Button>
 
-                  <button type="button" onClick={() => navigate('/cart')} className="back-to-cart">
-                    ← Back to Cart
-                  </button>
-                </Card>
+                  <Card className="order-summary-card-main">
+                    <h2>Order Summary</h2>
+
+                    <div className="order-items">
+                      {cartItems.map((item) => (
+                        <div key={item.id} className="order-item-container">
+                          <div className="order-item">
+                            <div className="order-item-image-wrap">
+                              <img
+                                src={item.image || 'https://placehold.co/80x80/20b2aa/ffffff?text=Product'}
+                                alt={item.name}
+                                className="order-item-image"
+                              />
+                            </div>
+                            <div className="order-item-info">
+                              <span className="order-item-name">{item.name} {item.requires_prescription && <span className="rx-label-small">Rx</span>}</span>
+                              <span className="order-item-qty">Qty: {item.quantity}</span>
+                            </div>
+                            <span className="order-item-price">
+                              PKR {(item.price * item.quantity).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {requiresPrescription && (
+                      <div className="order-rx-summary">
+                        <div className="summary-divider"></div>
+                        <div className="rx-summary-box">
+                          <span className="label">Order Prescription:</span>
+                          {orderPrescription ? (
+                            <span className="value success">✅ {orderPrescription.fileName}</span>
+                          ) : (
+                            <span className="value error">❌ Missing!</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="summary-divider"></div>
+
+                    <div className="summary-row">
+                      <span>Subtotal:</span>
+                      <span>PKR {subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="summary-row">
+                      <span>Shipping:</span>
+                      <span>PKR {shipping.toFixed(2)}</span>
+                    </div>
+                    <div className="summary-row">
+                      <span>Tax:</span>
+                      <span>PKR {tax.toFixed(2)}</span>
+                    </div>
+
+                    <div className="summary-divider"></div>
+
+                    <div className="summary-row total">
+                      <span>Total:</span>
+                      <span>PKR {total.toFixed(2)}</span>
+                    </div>
+                  </Card>
+
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="large"
+                    onClick={() => navigate('/checkout/payment')}
+                    className="process-to-pay-button"
+                    disabled={Object.keys(errors).length > 0 || !watchedShipping.fullName}
+                  >
+                    Process to Pay
+                  </Button>
+                </div>
               </div>
             </div>
-          </form>
+          </div>
+
+          <ShippingInformationModal
+            isOpen={showShippingModal}
+            onClose={() => setShowShippingModal(false)}
+            register={register}
+            errors={errors}
+            watch={watch}
+            priority={priority}
+            onPriorityChange={setPriority}
+            onSave={handleShippingModalSave}
+            handleSubmit={handleSubmit}
+          />
         </div>
       </div>
+      <button type="button" onClick={() => navigate('/cart')} className="back-to-cart-fixed">
+        ← Back to Cart
+      </button>
     </>
   );
 };

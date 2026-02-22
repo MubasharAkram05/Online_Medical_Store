@@ -13,6 +13,12 @@ const OrdersPage = () => {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(null);
 
+  const formatStatus = (status) => {
+    if (!status) return '—';
+    if (status === 'pending_prescription') return 'Pending Prescription Approval';
+    return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
+  };
+
   useEffect(() => {
     if (!token) {
       navigate('/login', { replace: true });
@@ -110,11 +116,11 @@ const OrdersPage = () => {
                     </div>
                   </div>
                   <div>
-                    <span className={`status-badge status-${order.status}`}>{order.status}</span>
+                    <span className={`status-badge status-${order.status}`}>{formatStatus(order.status)}</span>
                   </div>
                   <div>
                     <span className={`status-badge payment-${order.paymentStatus}`}>
-                      {order.paymentStatus}
+                      {formatStatus(order.paymentStatus)}
                     </span>
                     <div className="payment-method">{order.paymentMethod.toUpperCase()}</div>
                   </div>

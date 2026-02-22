@@ -242,9 +242,6 @@ const AdminMedicinesPage = () => {
                 ) : (
                   <div className="image-placeholder">No Image Available</div>
                 )}
-                {medicine.requires_prescription && (
-                  <div className="rx-badge">℞ Prescription Required</div>
-                )}
               </div>
               <div className="card-content">
                 <h2>{medicine.name}</h2>

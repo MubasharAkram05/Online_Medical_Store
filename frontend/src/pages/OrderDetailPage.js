@@ -14,6 +14,12 @@ const OrderDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
+  const formatStatus = (status) => {
+    if (!status) return '—';
+    if (status === 'pending_prescription') return 'Pending Prescription Approval';
+    return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
+  };
+
   useEffect(() => {
     if (!token) {
       navigate('/login', { replace: true });
@@ -122,7 +128,7 @@ const OrderDetailPage = () => {
           <Card className="detail-card">
             <h2>Order Status</h2>
             <div className="status-section">
-              <span className={`status-badge status-${order.status}`}>{order.status}</span>
+              <span className={`status-badge status-${order.status}`}>{formatStatus(order.status)}</span>
             </div>
             <div className="status-meta">
               <div>
@@ -130,7 +136,7 @@ const OrderDetailPage = () => {
                 <span className="value" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   {order.paymentMethod.toUpperCase()}
                   <span className={`status-badge payment-${order.payment?.status || (order.paymentMethod === 'cod' ? 'pending' : 'completed')}`} style={{ padding: '0.2rem 0.7rem', fontSize: '0.75rem', height: 'fit-content' }}>
-                    {order.payment?.status || (order.paymentMethod === 'cod' ? 'pending' : 'completed')}
+                    {formatStatus(order.payment?.status || (order.paymentMethod === 'cod' ? 'pending' : 'completed'))}
                   </span>
                 </span>
               </div>

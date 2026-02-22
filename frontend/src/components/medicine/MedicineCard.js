@@ -12,11 +12,6 @@ const MedicineCard = ({ medicine }) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (medicine.requires_prescription) {
-      toast.info('This medicine requires a prescription. Redirecting to select one...');
-      return; // Link wrapper will handle navigation
-    }
-
     if (medicine.stock === 0) {
       toast.error('This product is out of stock');
       return;

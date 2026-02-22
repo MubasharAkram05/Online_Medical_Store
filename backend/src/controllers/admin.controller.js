@@ -1118,7 +1118,10 @@ export const adminVerifyOrderPrescription = async (req, res, next) => {
     // 4. Update overall order status
     if (status === 'approved') {
       await pool.query(
-        `UPDATE orders SET prescription_verified = 1 WHERE id = ?`,
+        `UPDATE orders 
+         SET prescription_verified = 1, 
+             status = CASE WHEN status = 'pending_prescription' THEN 'pending' ELSE status END 
+         WHERE id = ?`,
         [orderId]
       );
     } else {
@@ -1142,6 +1145,59 @@ export const adminVerifyOrderPrescription = async (req, res, next) => {
       message: `Order prescription ${status} successfully.`,
       orderId
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const adminClearOrderData = async (req, res, next) => {
+  try {
+    const { days, startDate, endDate } = req.body;
+    const pool = getPool();
+
+    let queryCondition = '';
+    let params = [];
+
+    if (startDate && endDate) {
+      queryCondition = 'WHERE created_at BETWEEN ? AND ?';
+      params = [`${startDate} 00:00:00`, `${endDate} 23:59:59`];
+    } else if (days && days !== 'all') {
+      const numDays = Number(days);
+      if (isNaN(numDays)) {
+        return res.status(400).json({ error: { message: 'Invalid days parameter' } });
+      }
+      queryCondition = 'WHERE created_at >= NOW() - INTERVAL ? DAY';
+      params = [numDays];
+    } else if (days === 'all') {
+      queryCondition = '';
+    } else {
+      return res.status(400).json({ error: { message: 'Missing deletion criteria' } });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // Delete payments first (FK dependency)
+      await connection.query(`DELETE FROM payments WHERE order_id IN (SELECT id FROM orders ${queryCondition})`, params);
+
+      // Delete order items (FK dependency)
+      await connection.query(`DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders ${queryCondition})`, params);
+
+      // Finally delete orders
+      const [result] = await connection.query(`DELETE FROM orders ${queryCondition}`, params);
+
+      await connection.commit();
+      res.json({
+        message: 'Order data cleared successfully.',
+        clearedCount: result.affectedRows
+      });
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
   } catch (error) {
     next(error);
   }
