@@ -168,7 +168,7 @@ const RegisterPage = () => {
                 })}
                 className={errors.role ? 'error' : ''}
               >
-                <option value="patient">Patient (default)</option>
+                <option value="patient">Patient</option>
                 <option value="doctor">Doctor</option>
                 <option value="pharmacist">Pharmacist</option>
               </select>

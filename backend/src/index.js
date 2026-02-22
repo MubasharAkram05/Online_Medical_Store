@@ -6,6 +6,10 @@ import { ensureDefaultAdmin } from './utils/bootstrapAdmin.js';
 
 const start = async () => {
   try {
+    if (!env.jwt.accessSecret || !env.jwt.refreshSecret) {
+      throw new Error('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be configured.');
+    }
+
     await testConnection();
     logger.info('Database connected successfully');
 

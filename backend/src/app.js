@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { apiLimiter } from './middleware/rateLimiter.js';
 import authRoutes from './routes/auth.routes.js';
 import prescriptionRoutes from './routes/prescription.routes.js';
 import orderRoutes from './routes/order.routes.js';
@@ -14,16 +15,19 @@ import adminRoutes from './routes/admin.routes.js';
 const app = express();
 
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
+
+const allowAllOrigins = env.corsOrigin.includes('*');
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN?.split(',') || '*',
-    credentials: true
+    origin: allowAllOrigins ? true : env.corsOrigin,
+    credentials: !allowAllOrigins
   })
 );
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use('/api', apiLimiter);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,4 +57,3 @@ app.use('/api/admin', adminRoutes);
 app.use(errorHandler);
 
 export default app;
-

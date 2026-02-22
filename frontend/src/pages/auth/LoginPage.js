@@ -25,7 +25,7 @@ const LoginPage = () => {
       toast.success('Login successful!');
 
       // Redirect based on role
-      if (['admin', 'doctor', 'pharmacist'].includes(user.role)) {
+      if (user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
         navigate('/');

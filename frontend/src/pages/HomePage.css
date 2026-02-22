@@ -181,6 +181,10 @@
 }
 
 .category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   padding: 30px 20px;
   transition: all 0.3s;
@@ -193,9 +197,13 @@
   color: var(--text-white);
 }
 
-.category-card:hover .category-name,
-.category-card:hover .category-description {
+.category-card:hover .category-name {
   color: var(--text-white);
+}
+
+.category-emoji {
+  font-size: 48px;
+  margin-bottom: 20px;
 }
 
 .category-name {
@@ -203,12 +211,6 @@
   font-weight: 600;
   margin-bottom: 12px;
   color: var(--text-dark);
-}
-
-.category-description {
-  font-size: 14px;
-  color: var(--text-light);
-  margin: 0;
 }
 
 /* Featured Products Section */

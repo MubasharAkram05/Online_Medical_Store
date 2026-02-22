@@ -4,6 +4,10 @@ import { logger } from './logger.js';
 import { env } from '../config/env.js';
 
 export const ensureDefaultAdmin = async () => {
+  if (!env.enableDefaultAdminBootstrap) {
+    return;
+  }
+
   const email = env.defaultAdminEmail;
   const password = env.defaultAdminPassword;
 

@@ -14,6 +14,7 @@ import {
 import { validateRequest } from '../middleware/validate.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { profilePicUpload } from '../middleware/upload.middleware.js';
+import { authLimiter, passwordResetLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
@@ -46,11 +47,11 @@ const registerValidators = [
     .withMessage('Password must include uppercase, lowercase, number, and special character'),
   body('role')
     .optional()
-    .isIn(['patient', 'doctor', 'pharmacist', 'admin'])
-    .withMessage('Invalid role supplied')
+    .isIn(['patient', 'doctor', 'pharmacist'])
+    .withMessage('Role must be patient, doctor, or pharmacist')
 ];
 
-router.post('/register', registerValidators, validateRequest, register);
+router.post('/register', authLimiter, registerValidators, validateRequest, register);
 
 const loginValidators = [
   body('email')
@@ -62,10 +63,11 @@ const loginValidators = [
     .withMessage('Password must be at least 6 characters long')
 ];
 
-router.post('/login', loginValidators, validateRequest, login);
+router.post('/login', authLimiter, loginValidators, validateRequest, login);
 
 router.post(
   '/forgot-password',
+  passwordResetLimiter,
   [
     body('email')
       .isEmail()
@@ -78,6 +80,7 @@ router.post(
 
 router.post(
   '/reset-password',
+  authLimiter,
   [
     body('token')
       .isString()
@@ -139,4 +142,3 @@ router.patch(
 router.delete('/profile-pic', authenticate, deleteProfilePicture);
 
 export default router;
-

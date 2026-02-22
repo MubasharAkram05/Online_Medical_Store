@@ -10,9 +10,7 @@ const AdminRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Allow admin, doctor, and pharmacist roles
-  const professionalRoles = ['admin', 'doctor', 'pharmacist'];
-  if (!professionalRoles.includes(user.role)) {
+  if (user.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
 

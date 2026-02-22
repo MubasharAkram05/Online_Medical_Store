@@ -35,6 +35,25 @@ const HomePage = () => {
     fetchFeaturedProducts();
   }, []);
 
+  const getCategoryEmoji = (categoryName) => {
+    switch (categoryName) {
+      case 'Baby Care':
+        return '👶';
+      case 'First Aid':
+        return '➕';
+      case 'Medical Devices':
+        return '🩺';
+      case 'Medicines':
+        return '💊';
+      case 'Personal Care':
+        return '🧴';
+      case 'Vitamins & Supplements':
+        return '🌿';
+      default:
+        return '📁';
+    }
+  };
+
   return (
     <div className="homepage">
       {/* Hero Section */}
@@ -82,10 +101,12 @@ const HomePage = () => {
           </div>
           <div className="categories-grid">
             {CATEGORIES.map((category) => (
-              <Link key={category.id} to={`/medicines?category=${category.name.toLowerCase()}`}>
+              <Link key={category.id} to={`/medicines?category=${encodeURIComponent(category.name)}`}>
                 <Card className="category-card">
-                  <h3 className="category-name">{category.name}</h3>
-                  <p className="category-description">{category.description}</p>
+                  <span className="category-emoji">{getCategoryEmoji(category.name)}</span>
+                  <div className="category-card-content">
+                    <h3 className="category-name">{category.name}</h3>
+                  </div>
                 </Card>
               </Link>
             ))}

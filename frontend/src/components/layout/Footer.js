@@ -41,10 +41,10 @@ const Footer = () => {
           <div className="footer-column">
             <h3 className="footer-heading">Categories</h3>
             <ul className="footer-links">
-              <li><Link to="/medicines?category=medicines">Medicines</Link></li>
-              <li><Link to="/medicines?category=vitamins">Vitamins</Link></li>
-              <li><Link to="/medicines?category=personal-care">Personal Care</Link></li>
-              <li><Link to="/medicines?category=baby-care">Baby Care</Link></li>
+              <li><Link to="/medicines?category=Medicines">Medicines</Link></li>
+              <li><Link to="/medicines?category=Vitamins%20%26%20Supplements">Vitamins</Link></li>
+              <li><Link to="/medicines?category=Personal%20Care">Personal Care</Link></li>
+              <li><Link to="/medicines?category=Baby%20Care">Baby Care</Link></li>
             </ul>
           </div>
 

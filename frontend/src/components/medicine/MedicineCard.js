@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useCart } from '../../context/CartContext';
 import Button from '../common/Button';
@@ -7,6 +8,7 @@ import './MedicineCard.css';
 
 const MedicineCard = ({ medicine }) => {
   const { addToCart } = useCart();
+  const location = useLocation();
 
   const handleAddToCart = (e) => {
     e.preventDefault();
@@ -22,9 +24,14 @@ const MedicineCard = ({ medicine }) => {
   };
 
   const handleCardClick = (e) => {
-    // Save scroll position before navigating
+    // Preserve list scroll only when opening details from the main products listing page.
+    if (location.pathname !== '/medicines') {
+      return;
+    }
+
     const scrollPosition = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
     sessionStorage.setItem('medicinesPageScrollPosition', scrollPosition.toString());
+    sessionStorage.setItem('medicinesPageCanRestore', '1');
   };
 
   return (
@@ -72,4 +79,3 @@ const MedicineCard = ({ medicine }) => {
 };
 
 export default MedicineCard;
-

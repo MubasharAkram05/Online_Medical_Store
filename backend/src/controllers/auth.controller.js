@@ -16,8 +16,8 @@ import {
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 import { generateResetToken, hashToken } from '../utils/token.js';
-import { logger } from '../utils/logger.js';
 import { sendPasswordResetEmail } from '../services/email.service.js';
+import { env } from '../config/env.js';
 
 const buildFileUrl = (req, filePath) => {
   return `${req.protocol}://${req.get('host')}/uploads/${filePath.replace(/\\/g, '/')}`;
@@ -26,8 +26,8 @@ const buildFileUrl = (req, filePath) => {
 export const register = async (req, res, next) => {
   try {
     const { name, email, phone, password, role } = req.body;
-    const allowedRoles = ['patient', 'doctor', 'pharmacist', 'admin'];
-    const normalizedRole = allowedRoles.includes(role) ? role : 'patient';
+    const allowedSignupRoles = ['patient', 'doctor', 'pharmacist'];
+    const normalizedRole = allowedSignupRoles.includes(role) ? role : 'patient';
 
     const existingEmail = await findUserByEmail(email);
     if (existingEmail) {
@@ -159,19 +159,14 @@ export const requestPasswordReset = async (req, res, next) => {
       expiresAt
     });
 
-    const resetLink = `${process.env.FRONTEND_BASE_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
-
-    logger.info(
-      { email: user.email, resetLink },
-      'Password reset link generated'
-    );
+    const resetLink = `${env.frontendUrl}/reset-password?token=${token}`;
 
     // Send the actual email
     await sendPasswordResetEmail(user.email, resetLink);
 
     res.json({
       message: 'If an account with that email exists, a reset link has been sent.',
-      ...(process.env.NODE_ENV !== 'production' ? { resetToken: token } : {})
+      ...(env.nodeEnv !== 'production' ? { resetToken: token } : {})
     });
   } catch (error) {
     next(error);

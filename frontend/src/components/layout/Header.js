@@ -92,7 +92,7 @@ const Header = () => {
               </Link>
               {isLoggedIn ? (
                 <>
-                  {['admin', 'doctor', 'pharmacist'].includes(user?.role) && (
+                  {user?.role === 'admin' && (
                     <Link to="/admin/dashboard" className="nav-link">Dashboard</Link>
                   )}
                   <Link to="/orders" className="nav-link">Orders</Link>
@@ -149,4 +149,3 @@ const Header = () => {
 };
 
 export default Header;
-

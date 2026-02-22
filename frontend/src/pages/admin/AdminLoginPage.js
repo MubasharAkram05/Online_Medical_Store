@@ -23,8 +23,7 @@ const AdminLoginPage = () => {
     if (token && userRaw) {
       try {
         const user = JSON.parse(userRaw);
-        const professionalRoles = ['admin', 'doctor', 'pharmacist'];
-        if (professionalRoles.includes(user.role)) {
+        if (user.role === 'admin') {
           navigate('/admin/dashboard', { replace: true });
         } else {
           localStorage.removeItem('token');
@@ -51,9 +50,8 @@ const AdminLoginPage = () => {
       const response = await authService.login(payload);
       const { tokens, user } = response.data;
 
-      const professionalRoles = ['admin', 'doctor', 'pharmacist'];
-      if (!professionalRoles.includes(user.role)) {
-        toast.error('Professional access only. Please contact support for assistance.');
+      if (user.role !== 'admin') {
+        toast.error('Admin access only. Please contact support for assistance.');
         return;
       }
 
@@ -141,4 +139,3 @@ const AdminLoginPage = () => {
 };
 
 export default AdminLoginPage;
-

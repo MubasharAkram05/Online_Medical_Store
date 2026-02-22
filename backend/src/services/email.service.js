@@ -1,13 +1,17 @@
 import nodemailer from 'nodemailer';
 import { logger } from '../utils/logger.js';
+import { env } from '../config/env.js';
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
+  host: env.emailHost,
+  port: env.emailPort,
+  secure: env.emailSecure,
+  auth: env.emailUser && env.emailPassword
+    ? {
+      user: env.emailUser,
+      pass: env.emailPassword
+    }
+    : undefined
 });
 
 /**
@@ -21,7 +25,7 @@ const transporter = nodemailer.createTransport({
 export const sendEmail = async (options) => {
   try {
     const mailOptions = {
-      from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
+      from: `"${env.emailFromName}" <${env.emailFromAddress}>`,
       to: options.to,
       subject: options.subject,
       text: options.text,
@@ -34,7 +38,7 @@ export const sendEmail = async (options) => {
   } catch (error) {
     logger.error({ error: error.message, to: options.to }, 'Failed to send email');
     // Don't throw if email fails in dev, but log it
-    if (process.env.NODE_ENV === 'production') {
+    if (env.nodeEnv === 'production') {
       throw error;
     }
   }
@@ -96,7 +100,7 @@ export const sendPrescriptionStatusEmail = async (to, data) => {
       </div>
       ${!isApproved ? '<p style="color: #6b7280; font-size: 14px;">Please log in to your account to upload a valid prescription or contact support if you have questions.</p>' : ''}
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${process.env.FRONTEND_URL}/orders" style="background-color: #0f8b7f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Order Status</a>
+        <a href="${env.frontendUrl}/orders" style="background-color: #0f8b7f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Order Status</a>
       </div>
       <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
       <p style="font-size: 12px; color: #94a3b8; text-align: center;">

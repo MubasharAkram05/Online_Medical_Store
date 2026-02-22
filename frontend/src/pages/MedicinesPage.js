@@ -14,6 +14,23 @@ const BROWSE_FILTERS = [
 ];
 
 const WELLNESS_CATEGORIES = ['Vitamins & Supplements', 'Personal Care', 'Baby Care', 'First Aid', 'Wellness'];
+const CATEGORY_ALIASES = {
+  all: 'All Categories',
+  'all categories': 'All Categories',
+  medicines: 'Medicines',
+  'medical devices': 'Medical Devices',
+  'medical-devices': 'Medical Devices',
+  'personal care': 'Personal Care',
+  'personal-care': 'Personal Care',
+  'baby care': 'Baby Care',
+  'baby-care': 'Baby Care',
+  'first aid': 'First Aid',
+  'first-aid': 'First Aid',
+  vitamins: 'Vitamins & Supplements',
+  'vitamins and supplements': 'Vitamins & Supplements',
+  'vitamins & supplements': 'Vitamins & Supplements',
+  'vitamins-and-supplements': 'Vitamins & Supplements'
+};
 const SORT_OPTIONS = [
   { id: 'relevance', label: 'Relevance' },
   { id: 'priceLowHigh', label: 'Price: Low to High' },
@@ -21,45 +38,111 @@ const SORT_OPTIONS = [
   { id: 'popularity', label: 'Popularity' }
 ];
 
+const normalizeCategoryKey = (value) =>
+  decodeURIComponent(String(value || ''))
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const WELLNESS_CATEGORY_KEYS = new Set(WELLNESS_CATEGORIES.map(normalizeCategoryKey));
+
 const MedicinesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'All Categories');
-  const [browseFilter, setBrowseFilter] = useState('all');
+  const urlSearch = searchParams.get('search') || '';
+  const rawUrlCategory = searchParams.get('category') || '';
+
   const [allMedicines, setAllMedicines] = useState([]);
-  const [medicines, setMedicines] = useState([]);
   const [categories, setCategories] = useState(['All Categories']);
   const [loading, setLoading] = useState(true);
-  const [sortOption, setSortOption] = useState('relevance');
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [scrollRestored, setScrollRestored] = useState(false);
+
+  // State for filter controls that are not in the URL
+  const [browseFilter, setBrowseFilter] = useState('all');
+  const [sortOption, setSortOption] = useState('relevance');
+
+  // Local state for the search input, synced with URL
+  const [searchInput, setSearchInput] = useState(urlSearch);
+
+  // State for UI elements like suggestion visibility
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const normalizedCategory = useMemo(() => {
+    if (!rawUrlCategory) return 'All Categories';
+
+    const decoded = decodeURIComponent(rawUrlCategory).trim().toLowerCase();
+    const aliasMatch = CATEGORY_ALIASES[decoded];
+    if (aliasMatch) return aliasMatch;
+
+    const normalizedRaw = normalizeCategoryKey(decoded);
+    if (CATEGORY_ALIASES[normalizedRaw]) {
+      return CATEGORY_ALIASES[normalizedRaw];
+    }
+
+    const directMatch = categories.find(
+      (category) => {
+        const categoryKey = normalizeCategoryKey(category);
+        return categoryKey === normalizeCategoryKey(decoded) || categoryKey === normalizedRaw;
+      }
+    );
+    if (directMatch) return directMatch;
+
+    const slugMatch = categories.find((category) =>
+      normalizeCategoryKey(category) === normalizeCategoryKey(decoded.replace(/-/g, ' '))
+    );
+
+    return slugMatch || 'All Categories';
+  }, [rawUrlCategory, categories]);
+
+  // Sync search input with URL search param if it changes (e.g. back/forward)
+  useEffect(() => {
+    setSearchInput(urlSearch);
+  }, [urlSearch]);
+
+  // Canonicalize category query so both direct URL and navigation links behave consistently.
+  useEffect(() => {
+    if (!rawUrlCategory) return;
+
+    const current = decodeURIComponent(rawUrlCategory).trim();
+    if (normalizedCategory === 'All Categories') {
+      return;
+    }
+
+    if (current.toLowerCase() !== normalizedCategory.toLowerCase()) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('category', normalizedCategory);
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [rawUrlCategory, normalizedCategory, searchParams, setSearchParams]);
 
   // Restore scroll position when returning from detail page
   useEffect(() => {
     const savedScrollPosition = sessionStorage.getItem('medicinesPageScrollPosition');
-    if (savedScrollPosition && !scrollRestored && !loading && medicines.length > 0) {
-      // Wait for content to render, then restore scroll position
+    const canRestore = sessionStorage.getItem('medicinesPageCanRestore') === '1';
+
+    if (!scrollRestored && !loading && allMedicines.length > 0 && canRestore && savedScrollPosition) {
       const restoreScroll = () => {
         const scrollY = parseInt(savedScrollPosition, 10);
-        window.scrollTo({
-          top: scrollY,
-          behavior: 'instant'
-        });
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
         setScrollRestored(true);
-        // Clear the saved position after restoring
         sessionStorage.removeItem('medicinesPageScrollPosition');
+        sessionStorage.removeItem('medicinesPageCanRestore');
       };
-
-      // Use multiple strategies to ensure DOM is ready
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          restoreScroll();
-        });
-      });
+      requestAnimationFrame(() => requestAnimationFrame(restoreScroll));
+      return;
     }
-  }, [scrollRestored, loading, medicines.length]);
 
+    if (!scrollRestored && !loading) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      setScrollRestored(true);
+      sessionStorage.removeItem('medicinesPageScrollPosition');
+      sessionStorage.removeItem('medicinesPageCanRestore');
+    }
+  }, [scrollRestored, loading, allMedicines.length]);
+
+  // Fetch all medicines and categories once on component mount
   useEffect(() => {
     const fetchMedicines = async () => {
       try {
@@ -67,31 +150,31 @@ const MedicinesPage = () => {
         const response = await medicineService.getAll();
         const items = response.data?.medicines || response.data || [];
         setAllMedicines(items);
-        setMedicines(items);
 
-        const uniqueCategories = Array.from(
-          new Set(items.map((item) => item.category).filter(Boolean))
-        );
-        setCategories(['All Categories', ...uniqueCategories]);
+        const categoryMap = new Map();
+        items.forEach((item) => {
+          if (!item.category) return;
+          const label = String(item.category).trim();
+          const key = normalizeCategoryKey(label);
+          if (key && !categoryMap.has(key)) {
+            categoryMap.set(key, label);
+          }
+        });
+        setCategories(['All Categories', ...Array.from(categoryMap.values())]);
       } catch (error) {
         toast.error('Unable to load products from the server.');
         setAllMedicines([]);
-        setMedicines([]);
       } finally {
         setLoading(false);
       }
     };
-
     fetchMedicines();
   }, []);
 
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSuggestions([]);
-      return;
-    }
-    const query = searchQuery.trim().toLowerCase();
-    const nextSuggestions = allMedicines
+  const suggestions = useMemo(() => {
+    if (!searchInput.trim()) return [];
+    const query = searchInput.trim().toLowerCase();
+    return allMedicines
       .filter((item) => {
         const brand = item.brand || '';
         const cat = item.category || '';
@@ -102,8 +185,7 @@ const MedicinesPage = () => {
         );
       })
       .slice(0, 6);
-    setSuggestions(nextSuggestions);
-  }, [searchQuery, allMedicines]);
+  }, [searchInput, allMedicines]);
 
   const filteredMedicines = useMemo(() => {
     let filtered = [...allMedicines];
@@ -114,18 +196,19 @@ const MedicinesPage = () => {
       filtered = filtered.filter((item) => !item.requires_prescription);
     } else if (browseFilter === 'wellness') {
       filtered = filtered.filter((item) =>
-        WELLNESS_CATEGORIES.includes(item.category || '')
+        WELLNESS_CATEGORY_KEYS.has(normalizeCategoryKey(item.category || ''))
       );
     }
 
-    if (selectedCategory !== 'All Categories') {
+    if (normalizedCategory !== 'All Categories') {
+      const activeCategoryKey = normalizeCategoryKey(normalizedCategory);
       filtered = filtered.filter(
-        (item) => (item.category || '').toLowerCase() === selectedCategory.toLowerCase()
+        (item) => normalizeCategoryKey(item.category || '') === activeCategoryKey
       );
     }
 
-    if (searchQuery.trim()) {
-      const query = searchQuery.trim().toLowerCase();
+    if (urlSearch.trim()) {
+      const query = urlSearch.trim().toLowerCase();
       filtered = filtered.filter((item) => {
         const brand = item.brand || '';
         return (
@@ -135,12 +218,7 @@ const MedicinesPage = () => {
           (item.category || '').toLowerCase().includes(query)
         );
       });
-
-      filtered = filtered.sort((a, b) => {
-        const aName = a.name.toLowerCase();
-        const bName = b.name.toLowerCase();
-        return aName.indexOf(query) - bName.indexOf(query);
-      });
+      filtered.sort((a, b) => a.name.toLowerCase().indexOf(query) - b.name.toLowerCase().indexOf(query));
     }
 
     if (sortOption === 'priceLowHigh') {
@@ -152,17 +230,36 @@ const MedicinesPage = () => {
     }
 
     return filtered;
-  }, [allMedicines, browseFilter, selectedCategory, searchQuery, sortOption]);
+  }, [allMedicines, browseFilter, normalizedCategory, urlSearch, sortOption]);
 
-  useEffect(() => {
-    setMedicines(filteredMedicines);
-  }, [filteredMedicines]);
-
-  const handleSearch = (e) => {
+  const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      setSearchParams({ search: searchQuery });
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (searchInput.trim()) {
+      newSearchParams.set('search', searchInput.trim());
+    } else {
+      newSearchParams.delete('search');
     }
+    setSearchParams(newSearchParams);
+    setShowSuggestions(false);
+  };
+
+  const handleCategoryChange = (e) => {
+    const newCategory = e.target.value;
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (newCategory === 'All Categories') {
+      newSearchParams.delete('category');
+    } else {
+      newSearchParams.set('category', newCategory);
+    }
+    setSearchParams(newSearchParams);
+  };
+
+  const handleClearFilters = () => {
+    setBrowseFilter('all');
+    setSortOption('relevance');
+    setSearchInput('');
+    setSearchParams({});
   };
 
   return (
@@ -191,12 +288,12 @@ const MedicinesPage = () => {
 
         <div className="search-filter-bar">
           <div className="search-wrapper">
-            <form className="search-form" onSubmit={handleSearch}>
+            <form className="search-form" onSubmit={handleSearchSubmit}>
               <input
                 type="text"
                 placeholder="Search by medicine, brand, or category..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 onFocus={() => setShowSuggestions(true)}
                 className="search-input"
               />
@@ -214,8 +311,11 @@ const MedicinesPage = () => {
                     key={item.id}
                     onMouseDown={(event) => {
                       event.preventDefault();
-                      setSearchQuery(item.name);
+                      setSearchInput(item.name);
                       setShowSuggestions(false);
+                      const newSearchParams = new URLSearchParams(searchParams);
+                      newSearchParams.set('search', item.name);
+                      setSearchParams(newSearchParams);
                     }}
                   >
                     <strong>{item.name}</strong>
@@ -228,18 +328,11 @@ const MedicinesPage = () => {
           <div className="filter-controls">
             <select
               className="category-filter"
-              value={selectedCategory}
-              onChange={(e) => {
-                setSelectedCategory(e.target.value);
-                if (e.target.value === 'All Categories') {
-                  setSearchParams({});
-                } else {
-                  setSearchParams({ category: e.target.value });
-                }
-              }}
+              value={normalizedCategory}
+              onChange={handleCategoryChange}
             >
               {categories.map((cat) => (
-                <option key={cat} value={cat === 'All Categories' ? 'All Categories' : cat}>
+                <option key={cat} value={cat}>
                   {cat}
                 </option>
               ))}
@@ -262,20 +355,16 @@ const MedicinesPage = () => {
           <div className="loading">Loading products...</div>
         ) : (
           <>
-            {medicines.length > 0 ? (
+            {filteredMedicines.length > 0 ? (
               <div className="products-grid">
-                {medicines.map((medicine) => (
+                {filteredMedicines.map((medicine) => (
                   <MedicineCard key={medicine.id} medicine={medicine} />
                 ))}
               </div>
             ) : (
               <div className="no-results">
                 <p>No products found matching your criteria.</p>
-                <Button variant="outline" onClick={() => {
-                  setSearchQuery('');
-                  setSelectedCategory('All Categories');
-                  setSearchParams({});
-                }}>
+                <Button variant="outline" onClick={handleClearFilters}>
                   Clear Filters
                 </Button>
               </div>

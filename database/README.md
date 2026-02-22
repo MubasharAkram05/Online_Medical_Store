@@ -40,10 +40,17 @@ mysql -u <user> -p<password> online_medical_store < database/seeds/medicines_see
 - `orders` table stores shipping/contact details, totals, payment method, and prescription verification flag
 - `order_items` stores per-medicine quantity and pricing
 - Order numbers are generated automatically (unique per order)
+- `orders.status` supports: `pending`, `pending_prescription`, `confirmed`, `processing`, `shipped`, `delivered`, `cancelled`
 - From November 2025 onward, `orders.priority` tracks urgency (`normal`, `high`, `urgent`). If your database predates this column, run:
   ```sql
   ALTER TABLE orders
     ADD COLUMN priority ENUM('normal', 'high', 'urgent') DEFAULT 'normal' AFTER status;
+  ```
+- If your database predates prescription-gated order status support, run:
+  ```sql
+  ALTER TABLE orders
+    MODIFY COLUMN status ENUM('pending', 'pending_prescription', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled')
+    DEFAULT 'pending';
   ```
 
 ## Payments
@@ -57,4 +64,3 @@ mysql -u <user> -p<password> online_medical_store < database/seeds/medicines_see
 
 ## Password Reset Tokens
 - Store hashed reset tokens with expiry for secure password reset flow
-
