@@ -194,3 +194,62 @@ export const markPrescriptionAsUsed = async (userId) => {
   // Prescriptions no longer auto-expire.
   return userId;
 };
+
+const ACTIVE_ORDER_STATUSES = ['pending', 'pending_prescription', 'confirmed', 'processing', 'shipped'];
+
+export const listPrescriptionsInDateRange = async ({ fromDate, toDate, status = 'all' }) => {
+  const normalizedStatus = String(status || 'all').toLowerCase().trim();
+  const params = [fromDate, toDate];
+  let statusCondition = '';
+
+  if (normalizedStatus === 'approved') {
+    statusCondition = " AND p.status IN ('approved', 'verified')";
+  } else if (normalizedStatus === 'pending' || normalizedStatus === 'rejected') {
+    statusCondition = ' AND p.status = ?';
+    params.push(normalizedStatus);
+  }
+
+  const [rows] = await getPool().query(
+    `SELECT p.id, p.status, p.uploaded_at
+     FROM prescriptions p
+     WHERE p.uploaded_at BETWEEN ? AND ?
+     ${statusCondition}
+     ORDER BY p.uploaded_at DESC`,
+    params
+  );
+
+  return rows;
+};
+
+export const findActiveOrderLinksByPrescriptionIds = async (prescriptionIds = []) => {
+  if (!Array.isArray(prescriptionIds) || prescriptionIds.length === 0) {
+    return [];
+  }
+
+  const placeholders = prescriptionIds.map(() => '?').join(', ');
+  const [rows] = await getPool().query(
+    `SELECT DISTINCT oi.prescription_id
+     FROM order_items oi
+     INNER JOIN orders o ON o.id = oi.order_id
+     WHERE oi.prescription_id IN (${placeholders})
+       AND o.status IN (${ACTIVE_ORDER_STATUSES.map(() => '?').join(', ')})`,
+    [...prescriptionIds, ...ACTIVE_ORDER_STATUSES]
+  );
+
+  return rows.map((row) => Number(row.prescription_id)).filter(Boolean);
+};
+
+export const deletePrescriptionsByIds = async (prescriptionIds = []) => {
+  if (!Array.isArray(prescriptionIds) || prescriptionIds.length === 0) {
+    return 0;
+  }
+
+  const placeholders = prescriptionIds.map(() => '?').join(', ');
+  const [result] = await getPool().query(
+    `DELETE FROM prescriptions
+     WHERE id IN (${placeholders})`,
+    prescriptionIds
+  );
+
+  return result.affectedRows || 0;
+};

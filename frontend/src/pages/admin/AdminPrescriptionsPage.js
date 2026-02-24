@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import Card from '../../components/common/Card';
 import { adminService } from '../../services/adminService';
+import { useDialog } from '../../context/DialogContext';
 import './AdminPrescriptionsPage.css';
 
 const FILTER_OPTIONS = ['all', 'pending', 'approved', 'rejected'];
 const UPDATE_STATUS_OPTIONS = ['pending', 'approved', 'rejected'];
+const RANGE_STATUS_OPTIONS = ['all', 'pending', 'approved', 'rejected'];
 
 const formatStatusLabel = (status) => {
   const normalized = String(status || '').toLowerCase().trim();
@@ -23,11 +25,21 @@ const normalizeStatus = (status) => {
 };
 
 const AdminPrescriptionsPage = () => {
+  const dialog = useDialog();
   const [prescriptions, setPrescriptions] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [updatingId, setUpdatingId] = useState(null);
+  const [showDeleteRangeModal, setShowDeleteRangeModal] = useState(false);
+  const [rangeForm, setRangeForm] = useState({
+    fromDate: '',
+    toDate: '',
+    status: 'all'
+  });
+  const [rangePreview, setRangePreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const hasLoadedOnce = useRef(false);
 
   const loadPrescriptions = async (status, options = {}) => {
@@ -93,6 +105,127 @@ const AdminPrescriptionsPage = () => {
     }
   };
 
+  const resetDeleteRangeState = () => {
+    setRangeForm({
+      fromDate: '',
+      toDate: '',
+      status: 'all'
+    });
+    setRangePreview(null);
+    setPreviewLoading(false);
+    setDeleteLoading(false);
+  };
+
+  const openDeleteRangeModal = () => {
+    resetDeleteRangeState();
+    setShowDeleteRangeModal(true);
+  };
+
+  const closeDeleteRangeModal = () => {
+    if (previewLoading || deleteLoading) return;
+    setShowDeleteRangeModal(false);
+  };
+
+  const handleRangeFieldChange = (field, value) => {
+    setRangeForm((prev) => ({ ...prev, [field]: value }));
+    setRangePreview(null);
+  };
+
+  const handlePreviewRangeDeletion = async () => {
+    if (!rangeForm.fromDate || !rangeForm.toDate) return;
+    try {
+      setPreviewLoading(true);
+      const response = await adminService.previewDeletePrescriptionRange({
+        fromDate: rangeForm.fromDate,
+        toDate: rangeForm.toDate,
+        status: rangeForm.status
+      });
+      setRangePreview(response.data?.summary || null);
+    } catch (error) {
+      const message = error.response?.data?.error?.message || 'Unable to preview deletion range.';
+      await dialog.alert({
+        title: 'Error',
+        message,
+        variant: 'danger',
+        confirmText: 'Close'
+      });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleDeleteRange = async () => {
+    if (!rangePreview || rangePreview.deletableCount < 1) return;
+    const confirmed = await dialog.confirm({
+      title: 'Confirmation',
+      message: `Are you sure you want to delete prescriptions in this date range? ${rangePreview.deletableCount} record(s) will be deleted.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger'
+    });
+
+    if (!confirmed) return;
+
+    try {
+      setDeleteLoading(true);
+      const response = await adminService.deletePrescriptionRange({
+        fromDate: rangeForm.fromDate,
+        toDate: rangeForm.toDate,
+        status: rangeForm.status
+      });
+      const summary = response.data?.summary || {};
+      const deletedIds = Array.isArray(response.data?.deletedIds) ? response.data.deletedIds : [];
+
+      if (deletedIds.length > 0) {
+        setPrescriptions((prev) => prev.filter((item) => !deletedIds.includes(item.id)));
+      }
+
+      await loadPrescriptions(statusFilter, { silent: true });
+
+      if ((summary.totalMatched || 0) === 0) {
+        await dialog.alert({
+          title: 'No Records Found',
+          message: 'No prescriptions found for this date range.',
+          variant: 'warning',
+          confirmText: 'Close'
+        });
+      } else if ((summary.blockedCount || 0) > 0 && (summary.deletedCount || 0) > 0) {
+        await dialog.alert({
+          title: 'Partial Deletion',
+          message: 'Some prescriptions are linked to active orders and were not deleted.',
+          variant: 'warning',
+          confirmText: 'Close'
+        });
+      } else if ((summary.deletedCount || 0) === 0) {
+        await dialog.alert({
+          title: 'Not Deleted',
+          message: 'No prescriptions were deleted for this selection.',
+          variant: 'warning',
+          confirmText: 'Close'
+        });
+      } else {
+        await dialog.alert({
+          title: 'Success',
+          message: 'Selected prescriptions deleted successfully.',
+          variant: 'success',
+          confirmText: 'OK'
+        });
+      }
+
+      setShowDeleteRangeModal(false);
+      resetDeleteRangeState();
+    } catch (error) {
+      await dialog.alert({
+        title: 'Error',
+        message: error.response?.data?.error?.message || 'Unable to delete prescriptions in this range.',
+        variant: 'danger',
+        confirmText: 'Close'
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const baseUploadsUrl = React.useMemo(() => {
     const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
     const baseUrl = apiBase.replace(/\/api$/, '');
@@ -125,6 +258,13 @@ const AdminPrescriptionsPage = () => {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              className="delete-range-button"
+              onClick={openDeleteRangeModal}
+            >
+              Delete Prescriptions by Date 📅
+            </button>
           </div>
         </div>
 
@@ -194,6 +334,93 @@ const AdminPrescriptionsPage = () => {
           )}
         </Card>
       </div>
+
+      {showDeleteRangeModal && (
+        <div className="range-modal-overlay" onClick={closeDeleteRangeModal}>
+          <div className="range-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Delete Custom Range</h3>
+            <p>Select a date range and optional status filter before deletion.</p>
+
+            <div className="range-form-grid">
+              <label>
+                <span>From Date</span>
+                <input
+                  type="date"
+                  value={rangeForm.fromDate}
+                  onChange={(e) => handleRangeFieldChange('fromDate', e.target.value)}
+                />
+              </label>
+              <label>
+                <span>To Date</span>
+                <input
+                  type="date"
+                  value={rangeForm.toDate}
+                  onChange={(e) => handleRangeFieldChange('toDate', e.target.value)}
+                />
+              </label>
+              <label className="range-form-full">
+                <span>Status</span>
+                <select
+                  value={rangeForm.status}
+                  onChange={(e) => handleRangeFieldChange('status', e.target.value)}
+                >
+                  {RANGE_STATUS_OPTIONS.map((status) => (
+                    <option key={status} value={status}>
+                      {formatStatusLabel(status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {rangePreview && (
+              <div className="range-preview-summary">
+                <strong>{rangePreview.deletableCount || 0}</strong> of{' '}
+                <strong>{rangePreview.totalMatched || 0}</strong> matched prescriptions can be deleted.
+                {(rangePreview.blockedCount || 0) > 0 && (
+                  <div className="range-preview-note">
+                    {rangePreview.blockedCount} linked to active orders will be skipped.
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="range-modal-actions">
+              <button
+                type="button"
+                className="range-btn range-btn-secondary"
+                onClick={closeDeleteRangeModal}
+                disabled={previewLoading || deleteLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="range-btn range-btn-primary"
+                onClick={handlePreviewRangeDeletion}
+                disabled={!rangeForm.fromDate || !rangeForm.toDate || previewLoading || deleteLoading}
+              >
+                {previewLoading ? 'Checking...' : 'Check Records'}
+              </button>
+              <button
+                type="button"
+                className="range-btn range-btn-danger"
+                onClick={handleDeleteRange}
+                disabled={
+                  !rangeForm.fromDate ||
+                  !rangeForm.toDate ||
+                  !rangePreview ||
+                  (rangePreview.deletableCount || 0) < 1 ||
+                  previewLoading ||
+                  deleteLoading
+                }
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete Selected'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

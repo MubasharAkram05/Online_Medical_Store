@@ -12,6 +12,8 @@ import {
   adminUpdateOrderDetails,
   adminListPrescriptions,
   adminUpdatePrescriptionStatus,
+  adminPreviewDeletePrescriptionRange,
+  adminDeletePrescriptionRange,
   adminSalesReport,
   downloadReport,
   adminListUsers,
@@ -190,6 +192,32 @@ router.patch(
 );
 
 router.get('/prescriptions', adminListPrescriptions);
+router.post(
+  '/prescriptions/delete-range/preview',
+  [
+    body('fromDate').isISO8601().withMessage('From Date must be a valid date'),
+    body('toDate').isISO8601().withMessage('To Date must be a valid date'),
+    body('status')
+      .optional()
+      .isIn(['all', 'pending', 'approved', 'rejected'])
+      .withMessage('Invalid prescription status filter')
+  ],
+  validateRequest,
+  adminPreviewDeletePrescriptionRange
+);
+router.delete(
+  '/prescriptions/delete-range',
+  [
+    body('fromDate').isISO8601().withMessage('From Date must be a valid date'),
+    body('toDate').isISO8601().withMessage('To Date must be a valid date'),
+    body('status')
+      .optional()
+      .isIn(['all', 'pending', 'approved', 'rejected'])
+      .withMessage('Invalid prescription status filter')
+  ],
+  validateRequest,
+  adminDeletePrescriptionRange
+);
 router.patch(
   '/prescriptions/:id',
   [

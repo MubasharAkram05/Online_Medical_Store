@@ -25,7 +25,10 @@ import {
   updatePrescriptionStatus,
   findPrescriptionById,
   findPrescriptionWithUserById,
-  normalizeLegacyPrescriptionStatuses
+  normalizeLegacyPrescriptionStatuses,
+  listPrescriptionsInDateRange,
+  findActiveOrderLinksByPrescriptionIds,
+  deletePrescriptionsByIds
 } from '../models/prescription.model.js';
 import { sendPrescriptionStatusEmail } from '../services/email.service.js';
 import {
@@ -638,6 +641,131 @@ export const adminUpdatePrescriptionStatus = async (req, res, next) => {
     res.json({
       message: 'Prescription status updated successfully.',
       prescription: updatedPrescription ? mapPrescriptionForAdmin(req, updatedPrescription) : null
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const normalizePrescriptionStatusFilter = (value) => {
+  const normalized = String(value || 'all').toLowerCase().trim();
+  if (['all', 'pending', 'approved', 'rejected'].includes(normalized)) {
+    return normalized;
+  }
+  return 'all';
+};
+
+const buildRangeDateTimes = (fromDate, toDate) => {
+  const start = new Date(`${fromDate}T00:00:00`);
+  const end = new Date(`${toDate}T23:59:59`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return null;
+  }
+  if (start.getTime() > end.getTime()) {
+    return null;
+  }
+  return {
+    fromDateTime: `${fromDate} 00:00:00`,
+    toDateTime: `${toDate} 23:59:59`
+  };
+};
+
+export const adminPreviewDeletePrescriptionRange = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({
+      error: {
+        message: 'Validation failed',
+        details: errors.array()
+      }
+    });
+  }
+
+  try {
+    const { fromDate, toDate } = req.body;
+    const status = normalizePrescriptionStatusFilter(req.body.status);
+    const dateRange = buildRangeDateTimes(fromDate, toDate);
+    if (!dateRange) {
+      return res.status(400).json({
+        error: {
+          message: 'Invalid date range. Ensure From Date is before or equal to To Date.'
+        }
+      });
+    }
+
+    await normalizeLegacyPrescriptionStatuses();
+    const matched = await listPrescriptionsInDateRange({
+      fromDate: dateRange.fromDateTime,
+      toDate: dateRange.toDateTime,
+      status
+    });
+    const matchedIds = matched.map((item) => Number(item.id)).filter(Boolean);
+    const blockedIds = await findActiveOrderLinksByPrescriptionIds(matchedIds);
+    const blockedSet = new Set(blockedIds);
+    const deletableIds = matchedIds.filter((id) => !blockedSet.has(id));
+
+    return res.json({
+      summary: {
+        totalMatched: matchedIds.length,
+        deletableCount: deletableIds.length,
+        blockedCount: blockedIds.length
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const adminDeletePrescriptionRange = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({
+      error: {
+        message: 'Validation failed',
+        details: errors.array()
+      }
+    });
+  }
+
+  try {
+    const { fromDate, toDate } = req.body;
+    const status = normalizePrescriptionStatusFilter(req.body.status);
+    const dateRange = buildRangeDateTimes(fromDate, toDate);
+    if (!dateRange) {
+      return res.status(400).json({
+        error: {
+          message: 'Invalid date range. Ensure From Date is before or equal to To Date.'
+        }
+      });
+    }
+
+    await normalizeLegacyPrescriptionStatuses();
+    const matched = await listPrescriptionsInDateRange({
+      fromDate: dateRange.fromDateTime,
+      toDate: dateRange.toDateTime,
+      status
+    });
+    const matchedIds = matched.map((item) => Number(item.id)).filter(Boolean);
+    const blockedIds = await findActiveOrderLinksByPrescriptionIds(matchedIds);
+    const blockedSet = new Set(blockedIds);
+    const deletableIds = matchedIds.filter((id) => !blockedSet.has(id));
+
+    const deletedCount = await deletePrescriptionsByIds(deletableIds);
+    const message = deletedCount === 0
+      ? 'No prescriptions were deleted for this range.'
+      : blockedIds.length > 0
+        ? 'Some prescriptions are linked to active orders and were not deleted.'
+        : 'Selected prescriptions deleted successfully.';
+
+    return res.json({
+      message,
+      summary: {
+        totalMatched: matchedIds.length,
+        deletableCount: deletableIds.length,
+        blockedCount: blockedIds.length,
+        deletedCount
+      },
+      deletedIds: deletableIds
     });
   } catch (error) {
     next(error);
