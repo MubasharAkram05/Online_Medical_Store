@@ -3,6 +3,7 @@ import { body } from 'express-validator';
 import {
   register,
   login,
+  refreshSession,
   requestPasswordReset,
   resetPassword,
   getProfile,
@@ -64,6 +65,19 @@ const loginValidators = [
 ];
 
 router.post('/login', authLimiter, loginValidators, validateRequest, login);
+
+router.post(
+  '/refresh',
+  authLimiter,
+  [
+    body('refreshToken')
+      .isString()
+      .notEmpty()
+      .withMessage('Refresh token is required')
+  ],
+  validateRequest,
+  refreshSession
+);
 
 router.post(
   '/forgot-password',

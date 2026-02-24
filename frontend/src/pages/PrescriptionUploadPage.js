@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import PrescriptionUpload from '../components/prescription/PrescriptionUpload';
 import { prescriptionService } from '../services/prescriptionService';
+import { useCart } from '../context/CartContext';
+import { useDialog } from '../context/DialogContext';
 import './PrescriptionUploadPage.css';
 
 const formatFileSize = (bytes) => {
@@ -12,12 +14,16 @@ const formatFileSize = (bytes) => {
 };
 
 const PrescriptionUploadPage = () => {
+  const { confirm } = useDialog();
+  const { orderPrescription, setOrderPrescription } = useCart();
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editNotes, setEditNotes] = useState('');
   const [editFile, setEditFile] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [removingIds, setRemovingIds] = useState([]);
 
   const loadPrescriptions = async () => {
     setFetching(true);
@@ -61,12 +67,21 @@ const PrescriptionUploadPage = () => {
         const formData = new FormData();
         formData.append('file', editFile);
         formData.append('notes', editNotes);
-        
+
         await prescriptionService.upload(formData);
-        toast.success('Prescription updated successfully with new file.');
-        
-        // Delete the old prescription
-        await prescriptionService.delete(editingId);
+        toast.success('New prescription uploaded successfully.');
+
+        // Try to delete old one; if linked to active order, keep it and inform user.
+        try {
+          await prescriptionService.delete(editingId);
+        } catch (deleteError) {
+          const message = deleteError.response?.data?.error?.message || '';
+          if (message.includes('linked to an active order')) {
+            toast.info('New prescription uploaded. Old prescription is linked to an active order and cannot be deleted.');
+          } else {
+            throw deleteError;
+          }
+        }
       } else {
         // Only update notes
         await prescriptionService.update(editingId, editNotes);
@@ -95,16 +110,33 @@ const PrescriptionUploadPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this prescription?')) {
+    const isConfirmed = await confirm({
+      title: 'Confirmation',
+      message: 'Are you sure you want to delete this prescription?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger'
+    });
+    if (!isConfirmed) {
       return;
     }
 
     try {
+      setDeletingId(id);
       await prescriptionService.delete(id);
       toast.success('Prescription deleted successfully.');
-      setPrescriptions((prev) => prev.filter((p) => p.id !== id));
+      if (orderPrescription && String(orderPrescription.id) === String(id)) {
+        setOrderPrescription(null);
+      }
+      setRemovingIds((prev) => [...prev, id]);
+      setTimeout(() => {
+        setPrescriptions((prev) => prev.filter((p) => p.id !== id));
+        setRemovingIds((prev) => prev.filter((pid) => pid !== id));
+      }, 220);
     } catch (error) {
       toast.error(error.response?.data?.error?.message || 'Delete failed. Try again.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -136,7 +168,10 @@ const PrescriptionUploadPage = () => {
               <div>Actions</div>
             </div>
             {prescriptions.map((item) => (
-              <div className="table-row" key={item.id}>
+              <div
+                className={`table-row ${removingIds.includes(item.id) ? 'removing' : ''}`}
+                key={item.id}
+              >
                 <div>
                   <div className="file-name">{item.fileName}</div>
                   <div className="file-meta">
@@ -206,16 +241,16 @@ const PrescriptionUploadPage = () => {
                   <button
                     onClick={() => handleEdit(item)}
                     className="edit-btn"
-                    disabled={editingId !== null}
+                    disabled={editingId !== null || deletingId === item.id}
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(item.id)}
                     className="delete-btn"
-                    disabled={item.status === 'verified'}
+                    disabled={deletingId === item.id}
                   >
-                    Delete
+                    {deletingId === item.id ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               </div>

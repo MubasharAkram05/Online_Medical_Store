@@ -79,17 +79,127 @@ See **QUICK_START.md** for detailed instructions.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
-```
-├── backend/
-│   ├── src/ (controllers, models, routes, middleware)
-│   ├── database/ (schema, seeds)
-│   └── package.json
-├── frontend/
-│   ├── src/ (pages, components, services)
-│   └── package.json
-└── Documentation/ (guides, analysis, checklists)
+### Frontend Directory Tree 
+
+```text
+frontend/
+|-- package.json
+|-- package-lock.json
+|-- README.md
+|-- FRONTEND_SETUP.md
+|-- IMPLEMENTATION_COMPLETE.md
+|-- TROUBLESHOOTING.md
+|-- public/
+|   |-- index.html
+|   `-- images/
+|       `-- README.md
+`-- src/
+    |-- App.js
+    |-- index.js
+    |-- index.css
+    |-- components/
+    |   |-- admin/
+    |   |   |-- AddProductModal.js
+    |   |   `-- AddProductModal.css
+    |   |-- auth/
+    |   |   |-- AdminRoute.js
+    |   |   |-- AuthGuard.js
+    |   |   `-- PrivateRoute.js
+    |   |-- checkout/
+    |   |   |-- ShippingInformationModal.js
+    |   |   `-- ShippingInformationModal.css
+    |   |-- common/
+    |   |   |-- Button.js
+    |   |   |-- Button.css
+    |   |   |-- Card.js
+    |   |   |-- Card.css
+    |   |   |-- Loading.js
+    |   |   `-- Loading.css
+    |   |-- layout/
+    |   |   |-- AdminLayout.js
+    |   |   |-- AdminLayout.css
+    |   |   |-- Footer.js
+    |   |   |-- Footer.css
+    |   |   |-- Header.js
+    |   |   |-- Header.css
+    |   |   |-- Layout.js
+    |   |   `-- Layout.css
+    |   |-- medicine/
+    |   |   |-- MedicineCard.js
+    |   |   |-- MedicineCard.css
+    |   |   `-- MedicineInfoCard.js
+    |   |-- payment/
+    |   |   |-- BankTransferForm.js
+    |   |   |-- CardPaymentForm.js
+    |   |   |-- PaymentMethodSelector.js
+    |   |   |-- WalletPaymentForm.js
+    |   |   `-- Payment.css
+    |   `-- prescription/
+    |       |-- PrescriptionModal.js
+    |       |-- PrescriptionModal.css
+    |       |-- PrescriptionUpload.js
+    |       |-- PrescriptionUpload.css
+    |       |-- PrescriptionUploadModal.js
+    |       `-- PrescriptionUploadModal.css
+    |-- context/
+    |   `-- CartContext.js
+    |-- pages/
+    |   |-- CartPage.js
+    |   |-- CartPage.css
+    |   |-- CheckoutPage.js
+    |   |-- CheckoutPage.css
+    |   |-- HomePage.js
+    |   |-- HomePage.css
+    |   |-- MedicineDetailPage.js
+    |   |-- MedicineDetailPage.css
+    |   |-- MedicinesPage.js
+    |   |-- MedicinesPage.css
+    |   |-- OrderDetailPage.js
+    |   |-- OrderDetailPage.css
+    |   |-- OrdersPage.js
+    |   |-- OrdersPage.css
+    |   |-- PaymentPage.js
+    |   |-- PaymentPage.css
+    |   |-- PrescriptionUploadPage.js
+    |   |-- PrescriptionUploadPage.css
+    |   |-- ProfilePage.js
+    |   |-- ProfilePage.css
+    |   |-- TermsPage.js
+    |   |-- TermsPage.css
+    |   |-- auth/
+    |   |   |-- Auth.css
+    |   |   |-- ForgotPasswordPage.js
+    |   |   |-- LoginPage.js
+    |   |   |-- RegisterPage.js
+    |   |   `-- ResetPasswordPage.js
+    |   `-- admin/
+    |       |-- AdminDashboardPage.js
+    |       |-- AdminDashboardPage.css
+    |       |-- AdminLoginPage.js
+    |       |-- AdminLoginPage.css
+    |       |-- AdminMedicinesPage.js
+    |       |-- AdminMedicinesPage.css
+    |       |-- AdminOrdersPage.js
+    |       |-- AdminOrdersPage.css
+    |       |-- AdminPrescriptionsPage.js
+    |       |-- AdminPrescriptionsPage.css
+    |       |-- AdminSuppliersPage.js
+    |       |-- AdminSuppliersPage.css
+    |       |-- AdminUsersPage.js
+    |       `-- AdminUsersPage.css
+    |-- services/
+    |   |-- adminService.js
+    |   |-- authService.js
+    |   |-- cartService.js
+    |   |-- medicineService.js
+    |   |-- orderService.js
+    |   `-- prescriptionService.js
+    `-- utils/
+        |-- api.js
+        |-- constants.js
+        `-- imageUtils.js
 ```
 
 ---

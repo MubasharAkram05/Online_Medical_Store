@@ -5,9 +5,11 @@ import { toast } from 'react-toastify';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { authService } from '../services/authService';
+import { useDialog } from '../context/DialogContext';
 import './ProfilePage.css';
 
 const ProfilePage = () => {
+  const { confirm } = useDialog();
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -15,6 +17,17 @@ const ProfilePage = () => {
   const [changingPassword, setChangingPassword] = useState(false);
   const [profilePic, setProfilePic] = useState(null);
   const [uploadingPic, setUploadingPic] = useState(false);
+  const [userRole, setUserRole] = useState('');
+
+  const getRoleLabel = (role) => {
+    const normalizedRole = (role || '').toLowerCase();
+    if (normalizedRole === 'patient') return 'Patient';
+    if (normalizedRole === 'doctor') return 'Doctor';
+    if (normalizedRole === 'pharmacist') return 'Pharmacist';
+    if (normalizedRole === 'admin') return 'Admin';
+    if (!normalizedRole) return '';
+    return normalizedRole.charAt(0).toUpperCase() + normalizedRole.slice(1);
+  };
 
   const {
     register,
@@ -60,6 +73,7 @@ const ProfilePage = () => {
             phone: user.phone || ''
           });
           setProfilePic(user.profilePic || null);
+          setUserRole(user.role || '');
         }
       } catch (error) {
         toast.error('Unable to load profile details.');
@@ -78,6 +92,7 @@ const ProfilePage = () => {
       const updatedUser = response.data?.user;
       if (updatedUser) {
         localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUserRole(updatedUser.role || '');
       }
       toast.success(response.data?.message || 'Profile updated successfully.');
     } catch (error) {
@@ -135,7 +150,14 @@ const ProfilePage = () => {
   };
 
   const handleRemovePhoto = async () => {
-    if (!window.confirm('Are you sure you want to remove your profile picture?')) return;
+    const isConfirmed = await confirm({
+      title: 'Confirmation',
+      message: 'Are you sure you want to remove your profile picture?',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      variant: 'danger'
+    });
+    if (!isConfirmed) return;
 
     try {
       await authService.deleteProfilePic();
@@ -235,6 +257,17 @@ const ProfilePage = () => {
                   })}
                 />
                 {errors.email && <span className="error-message">{errors.email.message}</span>}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="role">Role</label>
+                <input
+                  id="role"
+                  type="text"
+                  value={getRoleLabel(userRole)}
+                  disabled
+                  readOnly
+                />
               </div>
 
               <div className="form-group">

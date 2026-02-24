@@ -64,6 +64,13 @@
   color: #374151;
 }
 
+.table-loading {
+  text-align: center;
+  color: #64748b;
+  font-weight: 600;
+  background: #fafafa;
+}
+
 .admin-table tr:hover {
   background: #f8fafc;
 }
@@ -91,11 +98,11 @@
 }
 
 .status-badge.status-pending {
-  background-color: rgba(249, 115, 22, 0.12);
-  color: #c2410c;
+  background-color: rgba(245, 158, 11, 0.18);
+  color: #92400e;
 }
 
-.status-badge.status-verified {
+.status-badge.status-approved {
   background-color: rgba(16, 185, 129, 0.12);
   color: #047857;
 }
@@ -103,11 +110,6 @@
 .status-badge.status-rejected {
   background-color: rgba(239, 68, 68, 0.12);
   color: #b91c1c;
-}
-
-.status-badge.status-expired {
-  background-color: rgba(148, 163, 184, 0.2);
-  color: #475569;
 }
 
 .table-actions {

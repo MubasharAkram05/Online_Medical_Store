@@ -27,9 +27,9 @@ const PrescriptionModal = ({
     try {
       // If showAll is true, we pass null to medicineId to get all user prescriptions
       const response = await prescriptionService.list(showAll ? null : medicine?.id);
-      // Only show pending or verified prescriptions
+      // Only show pending or approved prescriptions
       const filtered = (response.data.prescriptions || []).filter(
-        p => p.status === 'verified' || p.status === 'pending'
+        p => p.status === 'approved' || p.status === 'verified' || p.status === 'pending'
       );
       setPrescriptions(filtered);
     } catch (error) {
@@ -49,8 +49,8 @@ const PrescriptionModal = ({
       return;
     }
     // Inform user that even reused prescriptions need admin re-approval
-    if (selectedPrescription.status === 'verified') {
-      toast.info('This prescription was previously verified. It will be re-validated for this order.');
+    if (selectedPrescription.status === 'approved' || selectedPrescription.status === 'verified') {
+      toast.info('This prescription was previously approved. It will be re-validated for this order.');
     }
     onPrescriptionSelect(selectedPrescription);
     onClose();

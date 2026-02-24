@@ -9,7 +9,7 @@ export const USER_ROLES = {
 
 export const PRESCRIPTION_STATUS = {
   PENDING: 'pending',
-  VERIFIED: 'verified',
+  APPROVED: 'approved',
   REJECTED: 'rejected'
 };
 

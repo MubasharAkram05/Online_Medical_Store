@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // Context
 import { CartProvider } from './context/CartContext';
+import { DialogProvider } from './context/DialogContext';
 
 // Layout
 import Layout from './components/layout/Layout';
@@ -34,63 +35,66 @@ import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminPrescriptionsPage from './pages/admin/AdminPrescriptionsPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminSuppliersPage from './pages/admin/AdminSuppliersPage';
+import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminLayout from './components/layout/AdminLayout';
 
 function App() {
   return (
     <CartProvider>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<HomePage />} />
-          <Route path="medicines" element={<MedicinesPage />} />
-          <Route path="medicines/:id" element={<MedicineDetailPage />} />
-          <Route path="login" element={<LoginPage />} />
-          <Route path="register" element={<RegisterPage />} />
-          <Route path="forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="reset-password" element={<ResetPasswordPage />} />
+      <DialogProvider>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<HomePage />} />
+            <Route path="medicines" element={<MedicinesPage />} />
+            <Route path="medicines/:id" element={<MedicineDetailPage />} />
+            <Route path="login" element={<LoginPage />} />
+            <Route path="register" element={<RegisterPage />} />
+            <Route path="forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="reset-password" element={<ResetPasswordPage />} />
 
-          {/* Protected User Routes */}
-          <Route element={<PrivateRoute />}>
-            <Route path="cart" element={<CartPage />} />
-            <Route path="checkout" element={<CheckoutPage />} />
-            <Route path="checkout/payment" element={<PaymentPage />} />
-            <Route path="prescriptions/upload" element={<PrescriptionUploadPage />} />
-            <Route path="orders" element={<OrdersPage />} />
-            <Route path="orders/:id" element={<OrderDetailPage />} />
-            <Route path="profile" element={<ProfilePage />} />
+            {/* Protected User Routes */}
+            <Route element={<PrivateRoute />}>
+              <Route path="cart" element={<CartPage />} />
+              <Route path="checkout" element={<CheckoutPage />} />
+              <Route path="checkout/payment" element={<PaymentPage />} />
+              <Route path="prescriptions/upload" element={<PrescriptionUploadPage />} />
+              <Route path="orders" element={<OrdersPage />} />
+              <Route path="orders/:id" element={<OrderDetailPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+            </Route>
+
+            <Route path="terms" element={<TermsPage />} />
           </Route>
-
-          <Route path="terms" element={<TermsPage />} />
-        </Route>
-        <Route path="/admin">
-          <Route index element={<Navigate to="login" replace />} />
-          <Route path="login" element={<AdminLoginPage />} />
-          <Route element={<AdminRoute />}>
-            <Route element={<AdminLayout />}>
-              <Route path="dashboard" element={<AdminDashboardPage />} />
-              <Route path="medicines" element={<AdminMedicinesPage />} />
-              <Route path="orders" element={<AdminOrdersPage />} />
-              <Route path="prescriptions" element={<AdminPrescriptionsPage />} />
-              <Route path="users" element={<AdminUsersPage />} />
-              <Route path="suppliers" element={<AdminSuppliersPage />} />
+          <Route path="/admin">
+            <Route index element={<Navigate to="login" replace />} />
+            <Route path="login" element={<AdminLoginPage />} />
+            <Route element={<AdminRoute />}>
+              <Route element={<AdminLayout />}>
+                <Route path="dashboard" element={<AdminDashboardPage />} />
+                <Route path="medicines" element={<AdminMedicinesPage />} />
+                <Route path="orders" element={<AdminOrdersPage />} />
+                <Route path="prescriptions" element={<AdminPrescriptionsPage />} />
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="suppliers" element={<AdminSuppliersPage />} />
+                <Route path="settings" element={<AdminSettingsPage />} />
+              </Route>
             </Route>
           </Route>
-        </Route>
-      </Routes>
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+        </Routes>
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+        />
+      </DialogProvider>
     </CartProvider>
   );
 }
 
 export default App;
-

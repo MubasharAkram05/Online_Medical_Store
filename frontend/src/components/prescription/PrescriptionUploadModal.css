@@ -143,7 +143,7 @@
   color: #b45309;
 }
 
-.status-badge.status-verified {
+.status-badge.status-approved {
   background: rgba(34, 197, 94, 0.2);
   color: #15803d;
 }
@@ -481,4 +481,3 @@
     height: 400px;
   }
 }
-

@@ -1,44 +1,84 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import Card from '../../components/common/Card';
-import Button from '../../components/common/Button';
 import { adminService } from '../../services/adminService';
 import './AdminPrescriptionsPage.css';
 
-const STATUS_OPTIONS = ['pending', 'verified', 'rejected', 'expired'];
+const FILTER_OPTIONS = ['all', 'pending', 'approved', 'rejected'];
+const UPDATE_STATUS_OPTIONS = ['pending', 'approved', 'rejected'];
+
+const formatStatusLabel = (status) => {
+  const normalized = String(status || '').toLowerCase().trim();
+  if (normalized === 'all') return 'All';
+  if (normalized === 'approved' || normalized === 'verified') return 'Approved';
+  if (normalized === 'rejected') return 'Rejected';
+  return 'Pending';
+};
+
+const normalizeStatus = (status) => {
+  const normalized = String(status || '').toLowerCase().trim();
+  if (normalized === 'approved' || normalized === 'verified') return 'approved';
+  if (normalized === 'rejected') return 'rejected';
+  return 'pending';
+};
 
 const AdminPrescriptionsPage = () => {
   const [prescriptions, setPrescriptions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('pending');
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [updatingId, setUpdatingId] = useState(null);
+  const hasLoadedOnce = useRef(false);
 
-  const loadPrescriptions = async (status) => {
+  const loadPrescriptions = async (status, options = {}) => {
+    const { silent = false } = options;
     try {
-      setLoading(true);
-      const response = await adminService.getPrescriptions(status ? { status } : undefined);
+      if (silent) {
+        setListLoading(true);
+      } else {
+        setInitialLoading(true);
+      }
+      const response = await adminService.getPrescriptions(
+        status && status !== 'all' ? { status } : undefined
+      );
       setPrescriptions(response.data?.prescriptions || []);
     } catch (error) {
       toast.error('Unable to load prescriptions.');
     } finally {
-      setLoading(false);
+      if (silent) {
+        setListLoading(false);
+      } else {
+        setInitialLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    loadPrescriptions(statusFilter);
+    const silent = hasLoadedOnce.current;
+    loadPrescriptions(statusFilter, { silent });
+    hasLoadedOnce.current = true;
   }, [statusFilter]);
 
   const handleUpdate = async (id, status) => {
     try {
       setUpdatingId(id);
-      await adminService.updatePrescriptionStatus(id, { status });
+      const response = await adminService.updatePrescriptionStatus(id, { status });
+      const updatedPrescription = response.data?.prescription;
       toast.success('Prescription updated.');
-      await loadPrescriptions(statusFilter);
-      
-      // Trigger event to update prescription status everywhere (especially if verified)
-      if (status === 'verified' && typeof window !== 'undefined') {
-        console.log('Prescription verified, triggering prescriptionUpdated event');
+
+      if (updatedPrescription) {
+        setPrescriptions((prev) => {
+          const next = prev.map((item) => (item.id === id ? updatedPrescription : item));
+          if (statusFilter !== 'all') {
+            return next.filter((item) => normalizeStatus(item.status) === statusFilter);
+          }
+          return next;
+        });
+      } else {
+        await loadPrescriptions(statusFilter, { silent: true });
+      }
+
+      if (status === 'approved' && typeof window !== 'undefined') {
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
         }, 500);
@@ -59,7 +99,7 @@ const AdminPrescriptionsPage = () => {
     return `${baseUrl}/uploads`;
   }, []);
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="admin-page">
         <div className="container">
@@ -79,15 +119,12 @@ const AdminPrescriptionsPage = () => {
           </div>
           <div className="filters">
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              {STATUS_OPTIONS.map((status) => (
+              {FILTER_OPTIONS.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {formatStatusLabel(status)}
                 </option>
               ))}
             </select>
-            <Button variant="outline" size="small" onClick={() => loadPrescriptions(statusFilter)}>
-              Refresh
-            </Button>
           </div>
         </div>
 
@@ -103,47 +140,57 @@ const AdminPrescriptionsPage = () => {
               </tr>
             </thead>
             <tbody>
-              {prescriptions.map((prescription) => (
-                <tr key={prescription.id}>
-                  <td>
-                    <div className="table-title">{prescription.userName}</div>
-                    <div className="table-subtitle">{prescription.userEmail}</div>
-                  </td>
-                  <td>{new Date(prescription.uploadedAt).toLocaleString()}</td>
-                  <td>
-                    <span className={`status-badge status-${prescription.status}`}>
-                      {prescription.status}
-                    </span>
-                  </td>
-                  <td>{prescription.notes || '—'}</td>
-                  <td className="table-actions">
-                    <a
-                      className="link-button"
-                      href={`${baseUploadsUrl}/${prescription.filePath}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      View
-                    </a>
-                    <select
-                      value={prescription.status}
-                      onChange={(e) => handleUpdate(prescription.id, e.target.value)}
-                      disabled={updatingId === prescription.id}
-                    >
-                      {STATUS_OPTIONS.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
+              {listLoading && (
+                <tr>
+                  <td colSpan={5} className="table-loading">
+                    Loading prescriptions...
                   </td>
                 </tr>
-              ))}
+              )}
+              {prescriptions.map((prescription) => {
+                const status = normalizeStatus(prescription.status);
+                return (
+                  <tr key={prescription.id}>
+                    <td>
+                      <div className="table-title">{prescription.userName}</div>
+                      <div className="table-subtitle">{prescription.userEmail}</div>
+                    </td>
+                    <td>{new Date(prescription.uploadedAt).toLocaleString()}</td>
+                    <td>
+                      <span className={`status-badge status-${status}`}>
+                        {formatStatusLabel(status)}
+                      </span>
+                    </td>
+                    <td>{prescription.notes || '-'}</td>
+                    <td className="table-actions">
+                      <a
+                        className="link-button"
+                        href={`${baseUploadsUrl}/${prescription.filePath}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View
+                      </a>
+                      <select
+                        value={status}
+                        onChange={(e) => handleUpdate(prescription.id, e.target.value)}
+                        disabled={updatingId === prescription.id}
+                      >
+                        {UPDATE_STATUS_OPTIONS.map((optionStatus) => (
+                          <option key={optionStatus} value={optionStatus}>
+                            {formatStatusLabel(optionStatus)}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
           {prescriptions.length === 0 && (
-            <div className="empty-state">No prescriptions in this status.</div>
+            <div className="empty-state">No prescriptions available for this filter.</div>
           )}
         </Card>
       </div>
@@ -152,4 +199,3 @@ const AdminPrescriptionsPage = () => {
 };
 
 export default AdminPrescriptionsPage;
-

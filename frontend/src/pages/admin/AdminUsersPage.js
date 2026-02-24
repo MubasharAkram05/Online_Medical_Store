@@ -4,11 +4,13 @@ import { Link } from 'react-router-dom';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { adminService } from '../../services/adminService';
+import { useDialog } from '../../context/DialogContext';
 import './AdminUsersPage.css';
 
 const ROLES = ['patient', 'doctor', 'pharmacist', 'admin'];
 
 const AdminUsersPage = () => {
+  const { confirm } = useDialog();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
@@ -44,7 +46,14 @@ const AdminUsersPage = () => {
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+    const isConfirmed = await confirm({
+      title: 'Confirmation',
+      message: 'Are you sure you want to delete this user? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger'
+    });
+    if (!isConfirmed) {
       return;
     }
 

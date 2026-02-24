@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { adminService } from '../../services/adminService';
+import { useDialog } from '../../context/DialogContext';
 import './AdminSuppliersPage.css';
 
 const initialForm = {
@@ -14,6 +15,7 @@ const initialForm = {
 };
 
 const AdminSuppliersPage = () => {
+  const { confirm } = useDialog();
   const [suppliers, setSuppliers] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
@@ -70,7 +72,14 @@ const AdminSuppliersPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this supplier?')) return;
+    const isConfirmed = await confirm({
+      title: 'Confirmation',
+      message: 'Delete this supplier?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger'
+    });
+    if (!isConfirmed) return;
     try {
       await adminService.deleteSupplier(id);
       toast.success('Supplier removed.');

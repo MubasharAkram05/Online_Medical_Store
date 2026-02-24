@@ -3,6 +3,7 @@ import api from '../utils/api';
 export const authService = {
   register: (userData) => api.post('/auth/register', userData),
   login: (credentials) => api.post('/auth/login', credentials),
+  refreshSession: (refreshToken) => api.post('/auth/refresh', { refreshToken }),
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');

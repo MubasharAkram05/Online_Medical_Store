@@ -23,7 +23,9 @@ import {
 import {
   getAllPrescriptions,
   updatePrescriptionStatus,
-  findPrescriptionById
+  findPrescriptionById,
+  findPrescriptionWithUserById,
+  normalizeLegacyPrescriptionStatuses
 } from '../models/prescription.model.js';
 import { sendPrescriptionStatusEmail } from '../services/email.service.js';
 import {
@@ -104,7 +106,15 @@ const mapAdminOrderResponse = (order, items) => ({
   taxAmount: Number(order.tax_amount),
   shippingFee: Number(order.shipping_fee),
   paymentMethod: order.payment_method,
-  paymentStatus: order.payment_status || (order.payment_method === 'cod' ? 'pending' : 'completed'),
+  paymentStatus: (() => {
+    if (order.payment_status) return order.payment_status;
+    const paymentMethod = String(order.payment_method || '').toLowerCase().trim();
+    const orderStatus = String(order.status || '').toLowerCase().trim();
+    if (paymentMethod === 'cod') {
+      return orderStatus === 'delivered' ? 'completed' : 'pending';
+    }
+    return 'completed';
+  })(),
   prescriptionVerified: Boolean(order.prescription_verified),
   customer: {
     id: order.user_id,
@@ -418,36 +428,28 @@ export const adminUpdateOrderStatus = async (req, res, next) => {
     const id = Number(req.params.id);
     const newStatus = req.body.status;
 
-    // Get order data before updating to check if prescription is required
+    // Get current order data before updating
     const orderDataBefore = await getOrderWithItemsAdmin(id);
-    const requiresPrescription = orderDataBefore?.items?.some(
-      item => item.requires_prescription === 1 || item.requires_prescription === true
-    );
-    const userId = orderDataBefore?.order?.user_id;
 
     await updateOrderStatus(id, newStatus);
 
-    // If order is completed/delivered and requires prescription, expire the prescription
-    if ((newStatus === 'completed' || newStatus === 'delivered') && requiresPrescription && userId) {
-      const [updateResult] = await getPool().query(
-        `UPDATE prescriptions
-         SET status = 'expired'
-         WHERE user_id = ? 
-           AND status IN ('pending', 'verified')
-         ORDER BY uploaded_at DESC
-         LIMIT 1`,
-        [userId]
-      );
-      console.log(`Prescription expired for user ${userId} after order ${id} status changed to ${newStatus}. Affected rows: ${updateResult.affectedRows}`);
-    }
+    const normalizedNewStatus = String(newStatus || '').toLowerCase().trim();
+    const normalizedPreviousStatus = String(orderDataBefore?.order?.status || '').toLowerCase().trim();
+    const normalizedPaymentMethod = String(orderDataBefore?.order?.payment_method || '').toLowerCase().trim();
 
-    // If order is delivered and it's COD, mark payment as completed
-    if (newStatus === 'delivered' && orderDataBefore?.order?.payment_method === 'cod') {
-      await updatePaymentStatusForOrder(id, 'completed', {
-        method: 'cod',
-        amount: orderDataBefore.order.total_amount
-      });
-      console.log(`Payment marked as completed for COD order ${id} after status changed to delivered.`);
+    // Keep COD payment state synchronized with fulfillment state.
+    if (normalizedPaymentMethod === 'cod') {
+      if (normalizedNewStatus === 'delivered') {
+        await updatePaymentStatusForOrder(id, 'completed', {
+          method: 'cod',
+          amount: orderDataBefore.order.total_amount
+        });
+      } else if (normalizedPreviousStatus === 'delivered' && normalizedNewStatus !== 'delivered') {
+        await updatePaymentStatusForOrder(id, 'pending', {
+          method: 'cod',
+          amount: orderDataBefore.order.total_amount
+        });
+      }
     }
 
     const orderData = await getOrderWithItemsAdmin(id);
@@ -569,26 +571,38 @@ const buildFileUrl = (req, filePath) => {
   return `${req.protocol}://${req.get('host')}/uploads/${filePath.replace(/\\/g, '/')}`;
 };
 
+const mapPrescriptionForAdmin = (req, prescription) => ({
+  // Normalize legacy DB states to the UI contract.
+  id: prescription.id,
+  userId: prescription.user_id,
+  userName: prescription.user_name,
+  userEmail: prescription.user_email,
+  filePath: prescription.file_path,
+  fileName: prescription.file_original_name,
+  fileMimeType: prescription.file_mime_type || '',
+  fileSize: prescription.file_size || 0,
+  fileUrl: buildFileUrl(req, prescription.file_path),
+  status: (() => {
+    const normalized = String(prescription.status || '').toLowerCase().trim();
+    if (normalized === 'verified') return 'approved';
+    if (normalized === 'approved') return 'approved';
+    if (normalized === 'rejected') return 'rejected';
+    if (normalized === 'pending') return 'pending';
+    return normalized || 'pending';
+  })(),
+  notes: prescription.notes,
+  uploadedAt: prescription.uploaded_at,
+  verifiedAt: prescription.verified_at,
+  verifiedBy: prescription.verified_by
+});
+
 export const adminListPrescriptions = async (req, res, next) => {
   try {
+    await normalizeLegacyPrescriptionStatuses();
     const prescriptions = await getAllPrescriptions({ status: req.query.status });
 
     res.json({
-      prescriptions: prescriptions.map((prescription) => ({
-        id: prescription.id,
-        userId: prescription.user_id,
-        userName: prescription.user_name,
-        userEmail: prescription.user_email,
-        filePath: prescription.file_path,
-        fileName: prescription.file_original_name,
-        fileMimeType: prescription.file_mime_type,
-        fileSize: prescription.file_size,
-        fileUrl: buildFileUrl(req, prescription.file_path),
-        status: prescription.status,
-        notes: prescription.notes,
-        uploadedAt: prescription.uploaded_at,
-        verifiedAt: prescription.verified_at
-      }))
+      prescriptions: prescriptions.map((prescription) => mapPrescriptionForAdmin(req, prescription))
     });
   } catch (error) {
     next(error);
@@ -608,6 +622,7 @@ export const adminUpdatePrescriptionStatus = async (req, res, next) => {
 
   try {
     const id = Number(req.params.id);
+    await normalizeLegacyPrescriptionStatuses();
     const prescription = await findPrescriptionById(id);
     if (!prescription) {
       return res.status(404).json({
@@ -618,9 +633,11 @@ export const adminUpdatePrescriptionStatus = async (req, res, next) => {
     }
 
     await updatePrescriptionStatus(id, req.body.status, req.user.id, req.body.notes);
+    const updatedPrescription = await findPrescriptionWithUserById(id);
 
     res.json({
-      message: 'Prescription status updated successfully.'
+      message: 'Prescription status updated successfully.',
+      prescription: updatedPrescription ? mapPrescriptionForAdmin(req, updatedPrescription) : null
     });
   } catch (error) {
     next(error);

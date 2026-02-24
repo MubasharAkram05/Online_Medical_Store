@@ -303,6 +303,19 @@
   margin-bottom: 1.25rem;
 }
 
+.orders-section__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.orders-section__actions select {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.95rem;
+}
+
 .orders-list {
   display: flex;
   flex-direction: column;
@@ -952,6 +965,17 @@
     gap: 0.75rem;
   }
 
+  .orders-section__actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .orders-section__actions select {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.9rem;
+  }
+
   .order-card header {
     flex-direction: column;
     align-items: flex-start;
@@ -1072,7 +1096,7 @@
     font-size: 0.85rem;
   }
 
-  .orders-header__filters select {
+  .orders-section__actions select {
     font-size: 0.85rem;
     padding: 0.4rem 0.8rem;
   }

@@ -9,7 +9,12 @@ import { Navigate, useLocation } from 'react-router-dom';
 const AuthGuard = ({ children, roles = [] }) => {
     const token = localStorage.getItem('token');
     const userRaw = localStorage.getItem('user');
-    const user = userRaw ? JSON.parse(userRaw) : null;
+    let user = null;
+    try {
+        user = userRaw ? JSON.parse(userRaw) : null;
+    } catch (error) {
+        user = null;
+    }
     const location = useLocation();
 
     if (!token || !user) {

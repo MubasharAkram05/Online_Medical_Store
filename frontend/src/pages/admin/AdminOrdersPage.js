@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import { adminService } from '../../services/adminService';
+import { useDialog } from '../../context/DialogContext';
 import './AdminOrdersPage.css';
 
 const STATUS_OPTIONS = ['pending', 'pending_prescription', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
@@ -10,6 +11,7 @@ const PAYMENT_STATUS_OPTIONS = ['pending', 'completed', 'failed', 'refunded'];
 const PRIORITY_OPTIONS = ['normal', 'high', 'urgent'];
 
 const AdminOrdersPage = () => {
+  const { confirm, prompt } = useDialog();
   const [orders, setOrders] = useState([]);
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -98,11 +100,10 @@ const AdminOrdersPage = () => {
 
   const handleRefresh = async () => {
     try {
-      setStatusFilter('');
       setClearingRange('custom');
       setCustomRange({ start: '', end: '' });
       await loadOrders();
-      toast.success('Orders refreshed and filters cleared.');
+      toast.success('Orders refreshed and clear-data selector reset.');
     } catch (error) {
       toast.error('Unable to refresh orders. Please try again.');
     }
@@ -182,7 +183,14 @@ const AdminOrdersPage = () => {
   };
 
   const handleApprovePayment = async (orderId) => {
-    if (!window.confirm('Are you sure you want to approve this payment? This will confirm the order automatically.')) {
+    const isConfirmed = await confirm({
+      title: 'Confirmation',
+      message: 'Are you sure you want to approve this payment? This will confirm the order automatically.',
+      confirmText: 'Approve',
+      cancelText: 'Cancel',
+      variant: 'danger'
+    });
+    if (!isConfirmed) {
       return;
     }
 
@@ -226,7 +234,7 @@ const AdminOrdersPage = () => {
       console.log('All prescriptions from API:', response.data?.prescriptions);
       // Filter prescriptions for this specific user
       const userPrescs = (response.data?.prescriptions || []).filter(
-        p => p.userId === userId && p.status !== 'expired'
+        p => p.userId === userId
       );
       console.log('Filtered user prescriptions:', userPrescs);
       console.log('Latest prescription status:', userPrescs[0]?.status);
@@ -285,7 +293,14 @@ const AdminOrdersPage = () => {
   const handleOrderItemPrescriptionAction = async (orderItemId, status) => {
     let notes = '';
     if (status === 'declined') {
-      notes = window.prompt('Please enter the reason for rejection:');
+      notes = await prompt({
+        title: 'Rejection Reason',
+        message: 'Please enter the reason for rejection:',
+        placeholder: 'Reason',
+        confirmText: 'Submit',
+        cancelText: 'Cancel',
+        variant: 'warning'
+      });
       if (notes === null) return; // Cancelled
     }
 
@@ -314,7 +329,14 @@ const AdminOrdersPage = () => {
   const handleOrderPrescriptionAction = async (orderId, status) => {
     let notes = '';
     if (status === 'declined') {
-      notes = window.prompt('Please enter the reason for rejection:');
+      notes = await prompt({
+        title: 'Rejection Reason',
+        message: 'Please enter the reason for rejection:',
+        placeholder: 'Reason',
+        confirmText: 'Submit',
+        cancelText: 'Cancel',
+        variant: 'warning'
+      });
       if (notes === null) return; // Cancelled
     }
 
@@ -344,7 +366,7 @@ const AdminOrdersPage = () => {
     try {
       setLoadingPrescriptions(true);
       await adminService.updatePrescriptionStatus(prescriptionId, {
-        status: 'verified'
+        status: 'approved'
       });
       toast.success('Prescription approved successfully.');
 
@@ -378,14 +400,20 @@ const AdminOrdersPage = () => {
     }
   };
 
-  const handleCancelOrder = (order) => {
+  const handleCancelOrder = async (order) => {
     if (!order) return;
     if (order.status === 'cancelled') {
       toast.info('Order is already cancelled.');
       return;
     }
-    const confirmed = window.confirm(`Are you sure you want to cancel Order #${order.orderNumber}?`);
-    if (confirmed) {
+    const isConfirmed = await confirm({
+      title: 'Confirmation',
+      message: `Are you sure you want to cancel Order #${order.orderNumber}?`,
+      confirmText: 'Cancel Order',
+      cancelText: 'Keep Order',
+      variant: 'danger'
+    });
+    if (isConfirmed) {
       handleStatusChange(order.id, 'cancelled');
     }
   };
@@ -507,7 +535,14 @@ const AdminOrdersPage = () => {
       params = { days: clearingRange };
     }
 
-    if (!window.confirm(`Are you sure you want to delete ${rangeText}? This action cannot be undone.`)) return;
+    const isConfirmed = await confirm({
+      title: 'Confirmation',
+      message: `Are you sure you want to delete ${rangeText}? This action cannot be undone.`,
+      confirmText: 'Delete Data',
+      cancelText: 'Cancel',
+      variant: 'danger'
+    });
+    if (!isConfirmed) return;
 
     try {
       setIsClearing(true);
@@ -538,14 +573,6 @@ const AdminOrdersPage = () => {
           <p>Monitor customer carts, orders, and stock levels in real-time.</p>
         </div>
         <div className="orders-header__filters">
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="">All statuses</option>
-            {STATUS_OPTIONS.map((status) => (
-              <option key={status} value={status}>
-                {formatStatus(status)}
-              </option>
-            ))}
-          </select>
           <Button variant="outline" onClick={handleRefresh}>
             Refresh
           </Button>
@@ -647,9 +674,19 @@ const AdminOrdersPage = () => {
       <section className="orders-section">
         <div className="orders-section__header">
           <h2>Orders Management</h2>
-          <Button variant="outline" onClick={() => setStatusFilter('')}>
-            Clear filters
-          </Button>
+          <div className="orders-section__actions">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="">All statuses</option>
+              {STATUS_OPTIONS.map((status) => (
+                <option key={status} value={status}>
+                  {formatStatus(status)}
+                </option>
+              ))}
+            </select>
+            <Button variant="outline" onClick={() => setStatusFilter('')}>
+              Clear filters
+            </Button>
+          </div>
         </div>
 
         <div className="orders-list">

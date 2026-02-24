@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { prescriptionService } from '../../services/prescriptionService';
 import PrescriptionUpload from './PrescriptionUpload';
 import Button from '../common/Button';
+import { useDialog } from '../../context/DialogContext';
 import './PrescriptionUploadModal.css';
 
 const formatFileSize = (bytes) => {
@@ -13,6 +14,7 @@ const formatFileSize = (bytes) => {
 };
 
 const PrescriptionUploadModal = ({ isOpen, onClose, onUploadSuccess, medicine = null }) => {
+  const { confirm } = useDialog();
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -32,7 +34,7 @@ const PrescriptionUploadModal = ({ isOpen, onClose, onUploadSuccess, medicine = 
     try {
       // Pass medicine_id to API if provided to filter in backend
       const response = await prescriptionService.list(medicine?.id);
-      // Show all prescriptions in modal (including expired for history, but filtered by medicine)
+      // Show all prescriptions for the selected scope
       setPrescriptions(response.data.prescriptions || []);
     } catch (error) {
       toast.error('Unable to load prescriptions.');
@@ -106,7 +108,14 @@ const PrescriptionUploadModal = ({ isOpen, onClose, onUploadSuccess, medicine = 
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this prescription?')) {
+    const isConfirmed = await confirm({
+      title: 'Confirmation',
+      message: 'Are you sure you want to delete this prescription?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger'
+    });
+    if (!isConfirmed) {
       return;
     }
 
@@ -243,7 +252,7 @@ const PrescriptionUploadModal = ({ isOpen, onClose, onUploadSuccess, medicine = 
                         <button
                           onClick={() => handleDelete(item.id)}
                           className="action-btn delete-btn"
-                          disabled={item.status === 'verified'}
+                          disabled={item.status === 'approved' || item.status === 'verified'}
                           title="Delete Prescription"
                         >
                           Delete
@@ -334,4 +343,3 @@ const PrescriptionUploadModal = ({ isOpen, onClose, onUploadSuccess, medicine = 
 };
 
 export default PrescriptionUploadModal;
-

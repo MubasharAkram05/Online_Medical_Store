@@ -30,8 +30,6 @@ const LoginPage = () => {
       } else {
         navigate('/');
       }
-
-      window.location.reload(); // Refresh to update auth state
     } catch (error) {
       toast.error(error.response?.data?.error?.message || 'Login failed. Please check your credentials.');
     } finally {

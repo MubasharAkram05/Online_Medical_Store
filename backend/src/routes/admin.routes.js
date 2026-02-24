@@ -194,7 +194,7 @@ router.patch(
   '/prescriptions/:id',
   [
     body('status')
-      .isIn(['pending', 'verified', 'rejected', 'expired'])
+      .isIn(['pending', 'approved', 'rejected'])
       .withMessage('Invalid prescription status'),
     body('notes').optional({ nullable: true }).isLength({ max: 500 }).withMessage('Notes too long')
   ],

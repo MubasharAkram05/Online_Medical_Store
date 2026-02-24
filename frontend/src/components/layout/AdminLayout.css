@@ -29,7 +29,7 @@
 .admin-header {
   background: #ffffff;
   display: grid;
-  grid-template-columns: auto minmax(250px, 420px) auto auto;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 1.5rem;
   padding: 1.2rem 3rem;
@@ -61,36 +61,11 @@
   color: #0f8b7f;
 }
 
-.admin-search {
-  display: flex;
-  align-items: center;
-  border: 1px solid #d1d5db;
-  border-radius: 999px;
-  overflow: hidden;
-  background: #fff;
-}
-
-.admin-search input {
-  flex: 1;
-  border: none;
-  padding: 0.65rem 1rem;
-  font-size: 0.95rem;
-  outline: none;
-}
-
-.admin-search button {
-  border: none;
-  background: #0f8b7f;
-  color: #fff;
-  padding: 0.65rem 1.35rem;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
 .admin-main-nav {
   display: flex;
   align-items: center;
   gap: 1rem;
+  justify-self: end;
 }
 
 .admin-main-nav a {

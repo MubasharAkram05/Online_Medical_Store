@@ -1,4 +1,12 @@
-import { createPrescription, getPrescriptionsByUser, findPrescriptionById, updatePrescription, deletePrescription } from '../models/prescription.model.js';
+import {
+  createPrescription,
+  getPrescriptionsByUser,
+  findPrescriptionById,
+  updatePrescription,
+  deletePrescription,
+  findActiveOrderUsageByPrescriptionId,
+  normalizeLegacyPrescriptionStatuses
+} from '../models/prescription.model.js';
 import { logger } from '../utils/logger.js';
 
 const buildFileUrl = (req, filePath) => {
@@ -8,7 +16,14 @@ const buildFileUrl = (req, filePath) => {
 const mapPrescriptionResponse = (req, row) => ({
   id: row.id,
   medicineId: row.medicine_id,
-  status: row.status,
+  status: (() => {
+    const normalized = String(row.status || '').toLowerCase().trim();
+    if (normalized === 'verified') return 'approved';
+    if (normalized === 'approved') return 'approved';
+    if (normalized === 'rejected') return 'rejected';
+    if (normalized === 'pending') return 'pending';
+    return normalized || 'pending';
+  })(),
   notes: row.notes,
   fileName: row.file_original_name,
   fileMimeType: row.file_mime_type,
@@ -65,6 +80,7 @@ export const listPrescriptions = async (req, res, next) => {
   try {
     const { medicineId, medicine_id } = req.query;
     const mid = medicineId || medicine_id;
+    await normalizeLegacyPrescriptionStatuses();
     const prescriptions = await getPrescriptionsByUser(req.user.id, mid);
 
     res.json({
@@ -112,8 +128,9 @@ export const updatePrescriptionNotes = async (req, res, next) => {
 export const deletePrescriptionById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const numericId = Number(id);
 
-    const prescription = await findPrescriptionById(id);
+    const prescription = await findPrescriptionById(numericId);
     if (!prescription) {
       return res.status(404).json({
         error: {
@@ -130,7 +147,16 @@ export const deletePrescriptionById = async (req, res, next) => {
       });
     }
 
-    const deleted = await deletePrescription(id, req.user.id);
+    const activeUsage = await findActiveOrderUsageByPrescriptionId(numericId, req.user.id);
+    if (activeUsage) {
+      return res.status(409).json({
+        error: {
+          message: 'This prescription is linked to an active order and cannot be deleted.'
+        }
+      });
+    }
+
+    const deleted = await deletePrescription(numericId, req.user.id);
     if (!deleted) {
       return res.status(404).json({
         error: {
@@ -142,7 +168,7 @@ export const deletePrescriptionById = async (req, res, next) => {
     logger.info(
       {
         userId: req.user.id,
-        prescriptionId: id
+        prescriptionId: numericId
       },
       'Prescription deleted'
     );
@@ -154,4 +180,3 @@ export const deletePrescriptionById = async (req, res, next) => {
     next(error);
   }
 };
-

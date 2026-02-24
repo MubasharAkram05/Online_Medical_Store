@@ -22,8 +22,27 @@ const AdminLayout = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  let user = {};
+  try {
+    user = JSON.parse(localStorage.getItem('user') || '{}');
+  } catch (error) {
+    user = {};
+  }
+
   const userRole = user.role || 'patient';
+
+  const getRoleCode = (role) => {
+    const normalizedRole = (role || '').toLowerCase();
+    if (normalizedRole === 'patient') return 'p';
+    if (normalizedRole === 'pharmacist') return 'ph';
+    if (normalizedRole === 'doctor') return 'dr';
+    if (normalizedRole === 'admin') return 'ad';
+    return 'us';
+  };
+
+  const profileDisplayName = user.name
+    ? `${user.name} (${getRoleCode(user.role)})`
+    : 'Professional';
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -32,18 +51,16 @@ const AdminLayout = () => {
     navigate('/login');
   };
 
-  const filteredMainNavLinks = mainNavLinks.filter(link => {
+  const filteredMainNavLinks = mainNavLinks.filter((link) => {
     if (userRole === 'admin') return true;
-    // Pharmacists and Doctors only see Dashboard and Orders
     if (['doctor', 'pharmacist'].includes(userRole)) {
       return ['Dashboard', 'Order Management'].includes(link.label);
     }
     return false;
   });
 
-  const filteredDropdownLinks = dropdownLinks.filter(link => {
+  const filteredDropdownLinks = dropdownLinks.filter((link) => {
     if (userRole === 'admin') return true;
-    // Pharmacists and Doctors only see Prescriptions and Settings
     if (['doctor', 'pharmacist'].includes(userRole)) {
       return ['Prescriptions', 'Settings'].includes(link.label);
     }
@@ -62,7 +79,6 @@ const AdminLayout = () => {
 
   return (
     <div className="admin-shell">
-      {/* ... (existing header and content) */}
       <div className="admin-info-bar">
         <div className="admin-info-left">
           <span>📞 Call Us: +92 300 1234567</span>
@@ -76,16 +92,6 @@ const AdminLayout = () => {
           <div className="admin-brand-icon">🏥</div>
           <div className="admin-brand-text">Medical Store</div>
         </div>
-
-        <form
-          className="admin-search"
-          onSubmit={(event) => {
-            event.preventDefault();
-          }}
-        >
-          <input type="search" placeholder="Search medicines, products..." />
-          <button type="submit">🔍</button>
-        </form>
 
         <nav className="admin-main-nav">
           {filteredMainNavLinks.map((link) => (
@@ -104,7 +110,7 @@ const AdminLayout = () => {
             className="admin-user-trigger"
             onClick={() => setMenuOpen((prev) => !prev)}
           >
-            {user.name || 'Professional'} <span className="chip-caret">▾</span>
+            {profileDisplayName} <span className="chip-caret">▾</span>
           </button>
 
           {menuOpen && (
@@ -140,4 +146,3 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
-

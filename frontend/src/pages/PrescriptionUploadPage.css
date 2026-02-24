@@ -66,6 +66,12 @@
   padding: 1rem 1.25rem;
   border-radius: 12px;
   background-color: #f8fafc;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.table-row.removing {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .table-header {
@@ -104,7 +110,7 @@
   color: #c2410c;
 }
 
-.status-verified {
+.status-approved {
   background-color: rgba(16, 185, 129, 0.12);
   color: #047857;
 }
@@ -112,11 +118,6 @@
 .status-rejected {
   background-color: rgba(239, 68, 68, 0.12);
   color: #b91c1c;
-}
-
-.status-expired {
-  background-color: rgba(148, 163, 184, 0.2);
-  color: #475569;
 }
 
 .notes-cell {

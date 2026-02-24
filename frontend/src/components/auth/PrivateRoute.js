@@ -7,7 +7,12 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 const PrivateRoute = () => {
     const token = localStorage.getItem('token');
     const userRaw = localStorage.getItem('user');
-    const user = userRaw ? JSON.parse(userRaw) : null;
+    let user = null;
+    try {
+        user = userRaw ? JSON.parse(userRaw) : null;
+    } catch (error) {
+        user = null;
+    }
     const location = useLocation();
 
     if (!token || !user) {

@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminService } from '../../services/adminService';
-import Button from '../../components/common/Button';
 import './AdminDashboardPage.css';
 
 const AdminDashboardPage = () => {
@@ -13,17 +11,13 @@ const AdminDashboardPage = () => {
   const [salesReport, setSalesReport] = useState(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [showDownloadDropdown, setShowDownloadDropdown] = useState(false);
-  const navigate = useNavigate();
 
   const generateReport = async (format) => {
     try {
       setIsGenerating(true);
-
       toast.info(`Generating ${reportType} report in ${format.toUpperCase()} format...`);
 
       const response = await adminService.downloadReport(reportType, format, { days: 7 });
-
-      // Create blob URL and trigger download
       const blob = format === 'pdf' ? response.data : new Blob([response.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -35,7 +29,6 @@ const AdminDashboardPage = () => {
       window.URL.revokeObjectURL(url);
 
       toast.success(`${reportType} report downloaded successfully!`);
-
     } catch (error) {
       console.error('Error generating report:', error);
       toast.error(`Failed to generate report: ${error.response?.data?.error?.message || error.message}`);
@@ -81,13 +74,13 @@ const AdminDashboardPage = () => {
     loadReportData();
   }, [reportType]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showDownloadDropdown && !event.target.closest('.download-dropdown-wrapper')) {
         setShowDownloadDropdown(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showDownloadDropdown]);
@@ -104,7 +97,7 @@ const AdminDashboardPage = () => {
 
   if (!overview) return null;
 
-  const { stats, products, alerts } = overview;
+  const { stats, alerts } = overview;
   const lowStockProducts = alerts?.lowStock || [];
   const expiringProducts = alerts?.expiring || [];
 
@@ -113,16 +106,15 @@ const AdminDashboardPage = () => {
       value || 0
     );
 
-  // Calculate sales summary
   const salesSummary = salesReport
     ? {
-      totalOrders: salesReport.reduce((sum, day) => sum + (Number(day.orders) || 0), 0),
-      totalRevenue: salesReport.reduce((sum, day) => sum + (Number(day.revenue) || 0), 0),
-      averageDailyRevenue: salesReport.length > 0
-        ? salesReport.reduce((sum, day) => sum + (Number(day.revenue) || 0), 0) / salesReport.length
-        : 0,
-      days: salesReport.length
-    }
+        totalOrders: salesReport.reduce((sum, day) => sum + (Number(day.orders) || 0), 0),
+        totalRevenue: salesReport.reduce((sum, day) => sum + (Number(day.revenue) || 0), 0),
+        averageDailyRevenue: salesReport.length > 0
+          ? salesReport.reduce((sum, day) => sum + (Number(day.revenue) || 0), 0) / salesReport.length
+          : 0,
+        days: salesReport.length
+      }
     : null;
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -158,7 +150,6 @@ const AdminDashboardPage = () => {
         )}
       </div>
 
-      {/* Reports Section */}
       <div className="admin-dashboard__section">
         <div className="section-header">
           <div>
@@ -200,7 +191,7 @@ const AdminDashboardPage = () => {
                     disabled={isGenerating}
                     className="download-option pdf"
                   >
-                    📄 Download PDF
+                    Download PDF
                   </button>
                   <button
                     onClick={() => {
@@ -210,7 +201,7 @@ const AdminDashboardPage = () => {
                     disabled={isGenerating}
                     className="download-option csv"
                   >
-                    📊 Download CSV
+                    Download CSV
                   </button>
                 </div>
               )}
@@ -218,7 +209,6 @@ const AdminDashboardPage = () => {
           </div>
         </div>
 
-        {/* Report Summary Section */}
         {reportType === 'sales' && (
           <div className="report-summary-section">
             <h3>Sales Report Summary (Last 7 Days)</h3>
@@ -300,15 +290,13 @@ const AdminDashboardPage = () => {
                         <h4>{product.name}</h4>
                       </div>
                       <div className="low-stock-card-body">
-                        <p className="low-stock-category">Category: {product.category || '—'}</p>
+                        <p className="low-stock-category">Category: {product.category || '-'}</p>
                         <div className="low-stock-meta">
                           <span className="low-stock-label">Stock:</span>
                           <span className="low-stock-value">{product.stock}</span>
-                          <span className="low-stock-price">
-                            Price: {formatCurrency(product.price || 0)}
-                          </span>
+                          <span className="low-stock-price">Price: {formatCurrency(product.price || 0)}</span>
                           <span className="low-stock-expiry">
-                            Expiry: {product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : '—'}
+                            Expiry: {product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : '-'}
                           </span>
                         </div>
                       </div>
@@ -348,15 +336,13 @@ const AdminDashboardPage = () => {
                         <h4>{product.name}</h4>
                       </div>
                       <div className="low-stock-card-body">
-                        <p className="low-stock-category">Category: {product.category || '—'}</p>
+                        <p className="low-stock-category">Category: {product.category || '-'}</p>
                         <div className="low-stock-meta">
                           <span className="low-stock-label">Stock:</span>
                           <span className="low-stock-value">{product.stock}</span>
-                          <span className="low-stock-price">
-                            Price: {formatCurrency(product.price || 0)}
-                          </span>
+                          <span className="low-stock-price">Price: {formatCurrency(product.price || 0)}</span>
                           <span className="low-stock-expiry expiry-highlight">
-                            Expiry: {product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : '—'}
+                            Expiry: {product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : '-'}
                           </span>
                         </div>
                       </div>
@@ -368,77 +354,8 @@ const AdminDashboardPage = () => {
           </div>
         )}
       </div>
-
-      {/* Products Section */}
-      <div className="admin-dashboard__section">
-        <div className="section-header">
-          <div>
-            <h2>Products Management</h2>
-            <p>Review, edit, or remove items from your inventory.</p>
-          </div>
-          <Button variant="primary" onClick={() => navigate('/admin/medicines')}>
-            Add Product
-          </Button>
-        </div>
-
-        <div className="table-wrapper">
-          <table className="dashboard-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Price</th>
-                <th>Stock</th>
-                <th>Category</th>
-                <th>Expiry</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="empty-state">
-                    No products found. Start by adding a new product.
-                  </td>
-                </tr>
-              ) : (
-                products.map((product) => (
-                  <tr key={product.id}>
-                    <td>{product.id}</td>
-                    <td className="product-name">
-                      <span>{product.name}</span>
-                      <small>{product.description || '—'}</small>
-                    </td>
-                    <td>{formatCurrency(product.price)}</td>
-                    <td>{product.stock}</td>
-                    <td>{product.category || '—'}</td>
-                    <td>{product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : '—'}</td>
-                    <td className="action-cell">
-                      <Button
-                        variant="outline"
-                        size="small"
-                        onClick={() => navigate('/admin/medicines', { state: { editId: product.id } })}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="small"
-                        onClick={() => navigate('/admin/medicines', { state: { deleteId: product.id } })}
-                      >
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 };
 
 export default AdminDashboardPage;
-

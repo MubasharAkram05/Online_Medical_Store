@@ -3,7 +3,6 @@ import crypto from 'crypto';
 import { getPool } from '../config/database.js';
 import { findMedicinesByIds, decrementMedicineStock } from '../models/medicine.model.js';
 import { createOrder, createOrderItems, getOrdersByUser, getOrderWithItems } from '../models/order.model.js';
-import { hasAnyPrescription, hasVerifiedPrescription, markPrescriptionAsUsed } from '../models/prescription.model.js';
 import { createPayment, updatePaymentProof } from '../models/payment.model.js';
 
 import { findInteractionPairs } from '../models/interaction.model.js';
@@ -134,13 +133,11 @@ export const checkout = async (req, res, next) => {
           prescriptionIssues.push('Invalid or unauthorized prescription.');
         } else {
           const p = prescriptions[0];
-          if (p.status === 'expired') {
-            prescriptionIssues.push('The provided prescription has expired.');
-          } else if (p.status === 'rejected') {
+          if (p.status === 'rejected') {
             prescriptionIssues.push('The provided prescription was previously rejected.');
           } else {
             // Valid prescription for the order
-            hasPendingPrescription = p.status !== 'verified';
+            hasPendingPrescription = p.status !== 'approved' && p.status !== 'verified';
           }
         }
       }
@@ -236,8 +233,7 @@ export const checkout = async (req, res, next) => {
       await createOrderItems(connection, orderId, orderItems);
       await decrementMedicineStock(connection, orderItems);
 
-      // We DON'T mark prescriptions as expired anymore to allow reuse.
-      // Re-verification is handled per-order in order_items.
+      // Prescriptions stay reusable and are verified per-order in order_items.
 
       let paymentStatus = 'pending';
       if (paymentMethod === 'card') {
@@ -293,7 +289,15 @@ export const listOrders = async (req, res, next) => {
         priority: order.priority || 'normal',
         totalAmount: Number(order.total_amount),
         paymentMethod: order.payment_method,
-        paymentStatus: order.payment_status || (order.payment_method === 'cod' ? 'pending' : 'completed'),
+        paymentStatus: (() => {
+          if (order.payment_status) return order.payment_status;
+          const paymentMethod = String(order.payment_method || '').toLowerCase().trim();
+          const orderStatus = String(order.status || '').toLowerCase().trim();
+          if (paymentMethod === 'cod') {
+            return orderStatus === 'delivered' ? 'completed' : 'pending';
+          }
+          return 'completed';
+        })(),
         prescriptionVerified: Boolean(order.prescription_verified),
         createdAt: order.created_at
       }))
@@ -436,4 +440,3 @@ export const uploadPaymentProof = async (req, res, next) => {
     next(error);
   }
 };
-

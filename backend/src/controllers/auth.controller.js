@@ -14,13 +14,44 @@ import {
   markTokenUsed
 } from '../models/passwordResetToken.model.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
-import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import { generateResetToken, hashToken } from '../utils/token.js';
 import { sendPasswordResetEmail } from '../services/email.service.js';
 import { env } from '../config/env.js';
 
 const buildFileUrl = (req, filePath) => {
   return `${req.protocol}://${req.get('host')}/uploads/${filePath.replace(/\\/g, '/')}`;
+};
+
+const buildAuthPayload = (user) => ({
+  sub: user.id,
+  email: user.email,
+  role: user.role
+});
+
+const buildAuthResponse = (user, includeRefreshToken = true) => {
+  const payload = buildAuthPayload(user);
+  const accessToken = generateAccessToken(payload);
+  const response = {
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      profilePic: user.profile_pic,
+      isVerified: Boolean(user.is_verified)
+    },
+    tokens: {
+      accessToken
+    }
+  };
+
+  if (includeRefreshToken) {
+    response.tokens.refreshToken = generateRefreshToken(payload);
+  }
+
+  return response;
 };
 
 export const register = async (req, res, next) => {
@@ -56,30 +87,7 @@ export const register = async (req, res, next) => {
       role: normalizedRole
     });
 
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role
-    };
-
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
-
-    res.status(201).json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        profilePic: user.profile_pic,
-        isVerified: Boolean(user.is_verified)
-      },
-      tokens: {
-        accessToken,
-        refreshToken
-      }
-    });
+    res.status(201).json(buildAuthResponse(user));
   } catch (error) {
     next(error);
   }
@@ -109,30 +117,45 @@ export const login = async (req, res, next) => {
       });
     }
 
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role
-    };
+    res.json(buildAuthResponse(user));
+  } catch (error) {
+    next(error);
+  }
+};
 
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
+export const refreshSession = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
 
-    res.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        profilePic: user.profile_pic,
-        isVerified: Boolean(user.is_verified)
-      },
-      tokens: {
-        accessToken,
-        refreshToken
-      }
-    });
+    if (!refreshToken) {
+      return res.status(401).json({
+        error: {
+          message: 'Refresh token is required'
+        }
+      });
+    }
+
+    let payload;
+    try {
+      payload = verifyRefreshToken(refreshToken);
+    } catch (error) {
+      return res.status(401).json({
+        error: {
+          message: 'Invalid or expired refresh token'
+        }
+      });
+    }
+
+    const user = await findUserById(payload.sub);
+    if (!user) {
+      return res.status(401).json({
+        error: {
+          message: 'Session is no longer valid'
+        }
+      });
+    }
+
+    res.json(buildAuthResponse(user));
   } catch (error) {
     next(error);
   }

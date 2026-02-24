@@ -157,6 +157,12 @@
   border-color: #ef4444;
 }
 
+.profile-form input[disabled] {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
 .error-message {
   color: #ef4444;
   font-size: 0.85rem;

@@ -11,6 +11,8 @@ const AdminMedicinesPage = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState(null);
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [sortBy, setSortBy] = useState('relevance');
@@ -120,14 +122,27 @@ const AdminMedicinesPage = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this medicine?')) return;
+  const handleDeleteClick = (medicine) => {
+    setDeleteCandidate(medicine);
+  };
+
+  const handleCancelDelete = () => {
+    if (isDeleting) return;
+    setDeleteCandidate(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteCandidate?.id) return;
     try {
-      await adminService.deleteMedicine(id);
+      setIsDeleting(true);
+      await adminService.deleteMedicine(deleteCandidate.id);
       toast.success('Medicine deleted successfully.');
+      setDeleteCandidate(null);
       await loadMedicines();
     } catch (error) {
       toast.error(error.response?.data?.error?.message || 'Unable to delete medicine.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -274,7 +289,7 @@ const AdminMedicinesPage = () => {
                     </button>
                     <button
                       className="action-btn delete"
-                      onClick={() => handleDelete(medicine.id)}
+                      onClick={() => handleDeleteClick(medicine)}
                     >
                       Delete
                     </button>
@@ -299,9 +314,40 @@ const AdminMedicinesPage = () => {
         suppliers={suppliers}
         categorySuggestions={categorySuggestions}
       />
+
+      {deleteCandidate && (
+        <div className="confirm-modal-overlay" onClick={handleCancelDelete}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Delete Product</h3>
+            <p>
+              Are you sure you want to delete
+              {' '}
+              <strong>{deleteCandidate.name}</strong>
+              ?
+            </p>
+            <div className="confirm-modal-actions">
+              <button
+                type="button"
+                className="confirm-btn cancel"
+                onClick={handleCancelDelete}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="confirm-btn danger"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default AdminMedicinesPage;
-

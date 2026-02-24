@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS prescriptions (
   file_original_name VARCHAR(255) NOT NULL,
   file_mime_type VARCHAR(100) NOT NULL,
   file_size BIGINT NOT NULL,
-  status ENUM('pending', 'verified', 'rejected', 'expired') DEFAULT 'pending',
+  status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
   notes TEXT,
   uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   verified_at TIMESTAMP NULL DEFAULT NULL,

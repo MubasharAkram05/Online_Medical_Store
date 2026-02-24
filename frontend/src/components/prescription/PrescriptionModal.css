@@ -243,7 +243,7 @@
   color: #9a3412;
 }
 
-.status-verified {
+.status-approved {
   background: #dcfce7;
   color: #166534;
 }
@@ -251,11 +251,6 @@
 .status-rejected {
   background: #fee2e2;
   color: #991b1b;
-}
-
-.status-expired {
-  background: #f3f4f6;
-  color: #4b5563;
 }
 
 .modal-footer {

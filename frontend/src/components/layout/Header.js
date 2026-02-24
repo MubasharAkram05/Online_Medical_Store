@@ -18,6 +18,19 @@ const Header = () => {
     user = null;
   }
 
+  const getRoleCode = (role) => {
+    const normalizedRole = (role || '').toLowerCase();
+    if (normalizedRole === 'patient') return 'p';
+    if (normalizedRole === 'pharmacist') return 'ph';
+    if (normalizedRole === 'doctor') return 'dr';
+    if (normalizedRole === 'admin') return 'ad';
+    return 'us';
+  };
+
+  const profileDisplayName = user?.name
+    ? `${user.name} (${getRoleCode(user?.role)})`
+    : 'Account';
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -118,7 +131,7 @@ const Header = () => {
                       ) : (
                         <span className="user-icon">👤</span>
                       )}
-                      <span className="user-name">{user?.name || 'Account'}</span>
+                      <span className="user-name">{profileDisplayName}</span>
                       <span className="caret">▾</span>
                     </button>
                     <div className="user-dropdown">
