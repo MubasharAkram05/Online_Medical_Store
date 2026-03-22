@@ -29,6 +29,12 @@
   font-size: 1rem;
 }
 
+.orders-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .orders-badge {
   width: 68px;
   height: 68px;
@@ -178,6 +184,11 @@
 .payment-pending {
   background-color: rgba(251, 191, 36, 0.2);
   color: #92400e;
+}
+
+.payment-rejected {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
 }
 
 .empty-orders-card {

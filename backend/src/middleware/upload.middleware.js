@@ -29,13 +29,13 @@ const storage = multer.diskStorage({
   }
 });
 
-const allowedMimeTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
 const fileFilter = (req, file, cb) => {
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Only JPG, PNG, and PDF files are allowed.'));
+    cb(new Error('Only JPG, PNG, WEBP, and PDF files are allowed.'));
   }
 };
 
@@ -107,4 +107,3 @@ export const profilePicUpload = multer({
     fileSize: 2 * 1024 * 1024 // 2MB for profile pics
   }
 });
-

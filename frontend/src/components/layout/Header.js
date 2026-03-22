@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useCart } from '../../context/CartContext';
+// Link: renders anchor tag for client-side navigation without page reload
+// useNavigate: programmatically navigate to different pages
+import { Link, useNavigate } from 'react-router-dom'; 
+import { useCart } from '../../context/CartContext';  // cart context — provides cart item count for badge display
 import './Header.css';
-
+/**
+ * Header Component
+ * Main navigation header shown on all public/customer pages
+ * Contains: top info bar, logo, search bar, navigation links, user menu
+ * Handles: search, logout, cart count, role based links, user dropdown
+ */
 const Header = () => {
   const navigate = useNavigate();
-  const { getCartItemsCount } = useCart();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const cartCount = getCartItemsCount();
+  const { getCartItemsCount } = useCart();   // used to show badge number on cart icon
+  const [searchQuery, setSearchQuery] = useState('');   // searchQuery state — stores current value of search input
+  const [userMenuOpen, setUserMenuOpen] = useState(false);   // controls user profile dropdown visibility
+  const cartCount = getCartItemsCount();   // used to show badge on cart icon
   const isLoggedIn = Boolean(localStorage.getItem('token'));
   let user = null;
   try {
@@ -27,22 +34,31 @@ const Header = () => {
     return 'us';
   };
 
-  const profileDisplayName = user?.name
+  const profileDisplayName = user?.name // name exists — show with role code
     ? `${user.name} (${getRoleCode(user?.role)})`
     : 'Account';
-
+  /**
+   * handleSearch — handles search form submission
+   * Navigates to medicines page with search query in URL
+   * Only searches if query is not empty
+   * param {Event} e - Form submit event
+   */
   const handleSearch = (e) => {
-    e.preventDefault();
+    e.preventDefault(); // prevent default form submission and page reload
     if (searchQuery.trim()) {
-      navigate(`/medicines?search=${searchQuery}`);
-    }
+      navigate(`/medicines?search=${searchQuery}`);  // navigate to medicines page with search query
+    } 
   };
-
+  /**
+   * handleLogout — clears all auth data and redirects to login
+   * Removes: token, refreshToken, user from localStorage
+   * Then navigates to login page
+   */
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
-    navigate('/login');
+    navigate('/login');     // redirect to login page after logout
   };
 
   return (
@@ -109,18 +125,29 @@ const Header = () => {
                     <Link to="/admin/dashboard" className="nav-link">Dashboard</Link>
                   )}
                   <Link to="/orders" className="nav-link">Orders</Link>
+
+                   {/* User Profile Dropdown Menu
+                      opens on hover (onMouseEnter) and focus
+                      closes on mouse leave (onMouseLeave) and blur */}
                   <div
-                    className={`user-menu ${userMenuOpen ? 'open' : ''}`}
-                    tabIndex={0}
+                    className={`user-menu ${userMenuOpen ? 'open' : ''}`} // add 'open' class when menu is open for CSS styling
+
+                    tabIndex={0} // tabIndex makes div focusable — for keyboard accessibility
                     onMouseEnter={() => setUserMenuOpen(true)}
                     onMouseLeave={() => setUserMenuOpen(false)}
-                    onFocus={() => setUserMenuOpen(true)}
+                    onFocus={() => setUserMenuOpen(true)}    // open on keyboard focus
+
+                     // close on blur — but only if focus moved outside the menu
+                    // e.currentTarget.contains(e.relatedTarget) checks if
+                    // focus moved to a child element inside the menu
                     onBlur={(e) => {
                       if (!e.currentTarget.contains(e.relatedTarget)) {
                         setUserMenuOpen(false);
                       }
                     }}
                   >
+                   
+                    {/* profile trigger button — toggles dropdown on click */}
                     <button
                       type="button"
                       className="user-trigger"
@@ -149,7 +176,7 @@ const Header = () => {
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="nav-link">Login</Link>
+                  <Link to="/login" className="nav-link">Login</Link> {/* Not logged in — show Login and Register links */}
                   <Link to="/register" className="btn btn-primary btn-small">Register</Link>
                 </>
               )}

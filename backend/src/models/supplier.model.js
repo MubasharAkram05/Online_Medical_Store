@@ -26,12 +26,20 @@ export const createSupplier = async ({
   email,
   phone,
   address,
+  manufacturer,
   notes
 }) => {
   const [result] = await getPool().query(
-    `INSERT INTO suppliers (name, email, phone, address, notes)
-     VALUES (?, ?, ?, ?, ?)`,
-    [name, email || null, phone || null, address || null, notes || null]
+    `INSERT INTO suppliers (name, email, phone, address, manufacturer, notes)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      name,
+      email || null,
+      phone || null,
+      address || null,
+      manufacturer || null,
+      notes || null
+    ]
   );
 
   return result.insertId;
@@ -44,6 +52,7 @@ export const updateSupplier = async (
     email,
     phone,
     address,
+    manufacturer,
     notes
   }
 ) => {
@@ -53,10 +62,19 @@ export const updateSupplier = async (
          email = ?,
          phone = ?,
          address = ?,
+         manufacturer = ?,
          notes = ?,
          updated_at = NOW()
      WHERE id = ?`,
-    [name, email || null, phone || null, address || null, notes || null, id]
+    [
+      name,
+      email || null,
+      phone || null,
+      address || null,
+      manufacturer || null,
+      notes || null,
+      id
+    ]
   );
 };
 

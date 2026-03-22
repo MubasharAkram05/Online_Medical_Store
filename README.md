@@ -1,286 +1,135 @@
-# Online Medical Store Management System
-## Complete Implementation Summary
+﻿# Online Medical Store Management System (OMSMS)
 
-**Status**: ✅ **95% COMPLETE - PRODUCTION READY**
+A full-stack web application for managing an online medical store with customer ordering, prescription handling, payments, and admin operations.
 
-A comprehensive full-stack web application for managing an online medical store with authentication, medicine catalog, shopping cart, multi-method payment processing, prescription verification, admin dashboard, and business reporting.
+## Features
 
----
+- User authentication (register/login)
+- Medicine listing, search, and details
+- Cart and checkout flow
+- Prescription upload and verification workflow
+- Multi-method payment flow
+- Admin dashboard for medicines, orders, users, and prescriptions
 
-## 🚀 Quick Start
+## Tech Stack
 
-### Setup (5 minutes)
-```bash
-# Backend
-cd backend && npm install && npm run dev
-
-# Frontend (new terminal)
-cd frontend && npm install && npm start
-```
-
-**Backend**: http://localhost:4000  
-**Frontend**: http://localhost:3000
-
-See **QUICK_START.md** for detailed instructions.
-
----
-
-## ✨ Key Features
-
-### User Features
-✅ Registration & login with JWT  
-✅ Browse 1000+ medicines  
-✅ Search, filter, and sort  
-✅ Medicine interaction checking  
-✅ Shopping cart management  
-✅ Multi-method checkout  
-✅ Prescription upload (PDF/JPG/PNG)  
-✅ Order tracking with timeline  
-✅ Profile management  
-
-### Payment Processing (4 Methods)
-✅ Cash on Delivery (COD)  
-✅ Credit/Debit Card (Stripe)  
-✅ Bank Transfer (Manual)  
-✅ Mobile Wallet  
-✅ Payment verification & logging  
-✅ Refund processing  
-
-### Admin Dashboard
-✅ Dashboard with statistics  
-✅ Medicine CRUD operations  
-✅ Order management  
-✅ User management  
-✅ Prescription verification  
-✅ Supplier management  
-✅ 8 report types  
-
-### Security
-✅ JWT authentication  
-✅ 9 rate limiters  
-✅ CORS protection  
-✅ Helmet headers  
-✅ Input validation  
-✅ Password encryption  
-✅ Role-based access  
-
----
-
-## 📊 Project Overview
-
-| Component | Status | Details |
-|-----------|--------|---------|
-| Backend | ✅ 100% | 7 controllers, 40+ endpoints |
-| Frontend | ✅ 95% | 14 pages, 50+ components |
-| Security | ✅ 100% | Rate limiting, JWT, encryption |
-| Database | ✅ 100% | 8 models, normalized schema |
-| Documentation | ✅ 100% | 12+ guides, 5000+ lines |
-| **Overall** | ✅ **95%** | Production Ready |
-
----
+- Frontend: React 18, React Router, Axios, React Hook Form
+- Backend: Node.js, Express.js, MySQL
+- Security: JWT, bcrypt, helmet, CORS, rate limiting
 
 ## Project Structure
 
-### Frontend Directory Tree 
-
 ```text
-frontend/
-|-- package.json
-|-- package-lock.json
+omsms/
+|-- frontend/
+|-- backend/
+|-- database/
+|-- docs/
 |-- README.md
-|-- FRONTEND_SETUP.md
-|-- IMPLEMENTATION_COMPLETE.md
-|-- TROUBLESHOOTING.md
-|-- public/
-|   |-- index.html
-|   `-- images/
-|       `-- README.md
-`-- src/
-    |-- App.js
-    |-- index.js
-    |-- index.css
-    |-- components/
-    |   |-- admin/
-    |   |   |-- AddProductModal.js
-    |   |   `-- AddProductModal.css
-    |   |-- auth/
-    |   |   |-- AdminRoute.js
-    |   |   |-- AuthGuard.js
-    |   |   `-- PrivateRoute.js
-    |   |-- checkout/
-    |   |   |-- ShippingInformationModal.js
-    |   |   `-- ShippingInformationModal.css
-    |   |-- common/
-    |   |   |-- Button.js
-    |   |   |-- Button.css
-    |   |   |-- Card.js
-    |   |   |-- Card.css
-    |   |   |-- Loading.js
-    |   |   `-- Loading.css
-    |   |-- layout/
-    |   |   |-- AdminLayout.js
-    |   |   |-- AdminLayout.css
-    |   |   |-- Footer.js
-    |   |   |-- Footer.css
-    |   |   |-- Header.js
-    |   |   |-- Header.css
-    |   |   |-- Layout.js
-    |   |   `-- Layout.css
-    |   |-- medicine/
-    |   |   |-- MedicineCard.js
-    |   |   |-- MedicineCard.css
-    |   |   `-- MedicineInfoCard.js
-    |   |-- payment/
-    |   |   |-- BankTransferForm.js
-    |   |   |-- CardPaymentForm.js
-    |   |   |-- PaymentMethodSelector.js
-    |   |   |-- WalletPaymentForm.js
-    |   |   `-- Payment.css
-    |   `-- prescription/
-    |       |-- PrescriptionModal.js
-    |       |-- PrescriptionModal.css
-    |       |-- PrescriptionUpload.js
-    |       |-- PrescriptionUpload.css
-    |       |-- PrescriptionUploadModal.js
-    |       `-- PrescriptionUploadModal.css
-    |-- context/
-    |   `-- CartContext.js
-    |-- pages/
-    |   |-- CartPage.js
-    |   |-- CartPage.css
-    |   |-- CheckoutPage.js
-    |   |-- CheckoutPage.css
-    |   |-- HomePage.js
-    |   |-- HomePage.css
-    |   |-- MedicineDetailPage.js
-    |   |-- MedicineDetailPage.css
-    |   |-- MedicinesPage.js
-    |   |-- MedicinesPage.css
-    |   |-- OrderDetailPage.js
-    |   |-- OrderDetailPage.css
-    |   |-- OrdersPage.js
-    |   |-- OrdersPage.css
-    |   |-- PaymentPage.js
-    |   |-- PaymentPage.css
-    |   |-- PrescriptionUploadPage.js
-    |   |-- PrescriptionUploadPage.css
-    |   |-- ProfilePage.js
-    |   |-- ProfilePage.css
-    |   |-- TermsPage.js
-    |   |-- TermsPage.css
-    |   |-- auth/
-    |   |   |-- Auth.css
-    |   |   |-- ForgotPasswordPage.js
-    |   |   |-- LoginPage.js
-    |   |   |-- RegisterPage.js
-    |   |   `-- ResetPasswordPage.js
-    |   `-- admin/
-    |       |-- AdminDashboardPage.js
-    |       |-- AdminDashboardPage.css
-    |       |-- AdminLoginPage.js
-    |       |-- AdminLoginPage.css
-    |       |-- AdminMedicinesPage.js
-    |       |-- AdminMedicinesPage.css
-    |       |-- AdminOrdersPage.js
-    |       |-- AdminOrdersPage.css
-    |       |-- AdminPrescriptionsPage.js
-    |       |-- AdminPrescriptionsPage.css
-    |       |-- AdminSuppliersPage.js
-    |       |-- AdminSuppliersPage.css
-    |       |-- AdminUsersPage.js
-    |       `-- AdminUsersPage.css
-    |-- services/
-    |   |-- adminService.js
-    |   |-- authService.js
-    |   |-- cartService.js
-    |   |-- medicineService.js
-    |   |-- orderService.js
-    |   `-- prescriptionService.js
-    `-- utils/
-        |-- api.js
-        |-- constants.js
-        `-- imageUtils.js
+`-- PROJECT_STRUCTURE.md
 ```
 
----
+## Prerequisites
 
-## 🔗 API Overview
+- Node.js >= 18
+- npm
+- MySQL Server
 
-- **40+ endpoints** across 7 route modules
-- **Authentication**: Register, login, password reset
-- **Medicines**: Browse, search, interactions
-- **Orders**: Create, track, manage
-- **Prescriptions**: Upload, verify, retrieve
-- **Payments**: Multiple methods, webhooks
-- **Admin**: Full CRUD + reporting
-- **Reports**: 8 comprehensive report types
+## Installation
 
----
+### 1. Clone and move into project
 
-## 🛠️ Tech Stack
+```bash
+git clone <your-repo-url>
+cd "Online Medical store Managment system"
+```
 
-**Backend**: Node.js, Express, MySQL, JWT, Stripe, Nodemailer  
-**Frontend**: React, Router, Hook Form, Axios, Context API  
-**Security**: Helmet, CORS, Rate Limit, Bcrypt, Express Validator  
+### 2. Backend setup
 
----
+```bash
+cd backend
+npm install
+```
 
-## 📈 Statistics
+Create `backend/.env` and configure values:
 
-- **Total Files**: 120+
-- **Lines of Code**: 7,700+
-- **API Endpoints**: 40+
-- **Database Tables**: 8
-- **Components**: 50+
-- **Email Templates**: 5
-- **Report Types**: 8
-- **Rate Limiters**: 9
+```env
+PORT=4000
+APP_NAME=Online Medical Store API
 
----
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=online_medical_store
 
-## ✅ Quality
+JWT_ACCESS_SECRET=change_me_access_secret
+JWT_ACCESS_EXPIRES_IN=15m
+JWT_REFRESH_SECRET=change_me_refresh_secret
+JWT_REFRESH_EXPIRES_IN=7d
 
-✅ No build errors  
-✅ Production-grade code  
-✅ Enterprise security  
-✅ Comprehensive documentation  
-✅ Responsive design  
-✅ Error handling  
+FRONTEND_URL=http://localhost:3000
+```
 
----
+### 3. Frontend setup
 
-## 📚 Documentation
+```bash
+cd ../frontend
+npm install
+```
 
-- **QUICK_START.md** - Setup guide
-- **IMPLEMENTATION_VERIFICATION.md** - Features checklist
-- **PROJECT_COMPLETION_STATUS.md** - Project status
-- **CRITICAL_COMPONENTS_CHECKLIST.md** - Component status
-- **PROJECT_ANALYSIS.md** - Technical analysis
+## Run the project
 
----
+### Start backend
 
-## 🎯 Status
+```bash
+cd backend
+npm run dev
+```
 
-✅ **Backend**: 100% Complete  
-✅ **Frontend**: 95% Complete  
-✅ **Security**: 100% Implemented  
-✅ **Database**: 100% Ready  
+### Start frontend
 
-**Ready for**: Integration testing → Staging deployment → Production
+```bash
+cd frontend
+npm start
+```
 
----
+- Frontend: http://localhost:3000
+- Backend: http://localhost:4000
 
-## 🚀 Next Steps
+## Useful Scripts
 
-1. Review QUICK_START.md for setup
-2. Run local development environment
-3. Execute integration tests
-4. Deploy to staging
-5. Conduct security audit
-6. Launch to production
+### Backend (`backend/package.json`)
+- `npm install` - install dependencies
+- `npm run dev` - start backend in development mode
+- `npm start` - start backend in production mode
+- `npm run seed-medicines` - seed medicines
+- `npm run setup-db` - setup database
 
----
+### Frontend (`frontend/package.json`)
 
-**Status**: ✅ Production Ready  
-**Version**: 1.0.0  
-**Last Updated**: 2024
+- `npm start` - run frontend in development mode
+- `npm run build` - build production bundle
+- `npm test` - run tests
+
+## API Modules
+
+- `auth`
+- `medicine`
+- `order`
+- `prescription`
+- `admin`
+
+## Submission Notes
+
+Before sharing/submitting ZIP:
+
+- Remove `frontend/node_modules/`
+- Remove `backend/node_modules/`
+- Remove `frontend/build/`
+- Remove `backend/uploads/`
+- Do not include real `.env` files
+
+## License
+
+This project is built for academic/final-year project submission.

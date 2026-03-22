@@ -1,22 +1,17 @@
 import api from '../utils/api';
 
 export const authService = {
-  register: (userData) => api.post('/auth/register', userData),
-  login: (credentials) => api.post('/auth/login', credentials),
-  refreshSession: (refreshToken) => api.post('/auth/refresh', { refreshToken }),
-  logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-  },
+  login: (data) => api.post('/auth/login', data),
+  register: (data) => api.post('/auth/register', data),
+  refreshToken: (data) => api.post('/auth/refresh', data),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
-  resetPassword: (token, password) => api.post('/auth/reset-password', { token, password }),
-  getCurrentUser: () => api.get('/auth/me'),
-  updateProfile: (userData) => api.put('/auth/profile', userData),
-  changePassword: (payload) => api.put('/auth/change-password', payload),
-  updateProfilePic: (formData) => api.patch('/auth/profile-pic', formData, {
+  requestPasswordReset: (data) => api.post('/auth/forgot-password', data),
+  resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
+  getCurrentUser: () => api.get('/auth/profile'),
+  updateProfile: (data) => api.put('/auth/profile', data),
+  changePassword: (data) => api.put('/auth/change-password', data),
+  updateProfilePic: (formData) => api.put('/auth/profile-picture', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
-  deleteProfilePic: () => api.delete('/auth/profile-pic')
+  deleteProfilePic: () => api.delete('/auth/profile-picture')
 };
-

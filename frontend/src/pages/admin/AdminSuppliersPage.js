@@ -11,6 +11,7 @@ const initialForm = {
   email: '',
   phone: '',
   address: '',
+  manufacturer: '',
   notes: ''
 };
 
@@ -66,6 +67,7 @@ const AdminSuppliersPage = () => {
       email: supplier.email || '',
       phone: supplier.phone || '',
       address: supplier.address || '',
+      manufacturer: supplier.manufacturer || '',
       notes: supplier.notes || ''
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -135,6 +137,14 @@ const AdminSuppliersPage = () => {
                   onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
                 />
               </label>
+              <label>
+                <span>Manufacturer</span>
+                <input
+                  type="text"
+                  value={form.manufacturer}
+                  onChange={(e) => setForm((prev) => ({ ...prev, manufacturer: e.target.value }))}
+                />
+              </label>
               <label className="textarea-field">
                 <span>Address</span>
                 <textarea
@@ -177,8 +187,7 @@ const AdminSuppliersPage = () => {
             <tr>
               <th>Name</th>
               <th>Email</th>
-              <th>Phone</th>
-              <th>Address</th>
+              <th>Phone</th>              <th>Manufacturer</th>              <th>Address</th>
               <th></th>
             </tr>
           </thead>
@@ -188,6 +197,7 @@ const AdminSuppliersPage = () => {
                 <td>{supplier.name}</td>
                 <td>{supplier.email || '—'}</td>
                 <td>{supplier.phone || '—'}</td>
+                <td>{supplier.manufacturer || '—'}</td>
                 <td>{supplier.address || '—'}</td>
                 <td className="table-actions">
                   <Button variant="outline" size="small" onClick={() => handleEdit(supplier)}>

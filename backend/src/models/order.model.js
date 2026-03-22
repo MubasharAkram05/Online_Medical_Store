@@ -58,12 +58,25 @@ export const getOrdersByUser = async (userId) => {
               WHERE order_id = o.id
               ORDER BY created_at DESC
               LIMIT 1
-            ) AS payment_status
+            ) AS payment_status,
+            (
+              SELECT COUNT(*) > 0
+              FROM order_items oi
+              JOIN medicines m ON oi.medicine_id = m.id
+              WHERE oi.order_id = o.id AND m.requires_prescription = 1
+            ) AS has_prescription_required
      FROM orders o
      WHERE o.user_id = ?
      ORDER BY o.created_at DESC`,
     [userId]
   );
+
+  // Log payment_status for debugging
+  rows.forEach(row => {
+    if (row.payment_status) {
+      console.log(`[getOrdersByUser] Order ${row.id}: payment_status = ${row.payment_status}`);
+    }
+  });
 
   return rows;
 };

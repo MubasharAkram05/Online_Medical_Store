@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
   email VARCHAR(150),
   phone VARCHAR(30),
   address VARCHAR(255),
+  manufacturer VARCHAR(150),
   notes TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -128,7 +129,7 @@ CREATE TABLE IF NOT EXISTS payments (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   order_id BIGINT NOT NULL,
   method ENUM('cod', 'card', 'bank', 'wallet') NOT NULL,
-  status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending',
+  status ENUM('pending', 'completed', 'failed', 'refunded', 'rejected') DEFAULT 'pending',
   amount DECIMAL(10, 2) NOT NULL,
   transaction_id VARCHAR(100),
   reference VARCHAR(150),

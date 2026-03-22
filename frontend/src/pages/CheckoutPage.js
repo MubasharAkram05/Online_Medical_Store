@@ -8,6 +8,7 @@ import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import PrescriptionModal from '../components/prescription/PrescriptionModal';
 import ShippingInformationModal from '../components/checkout/ShippingInformationModal';
+import { useDialog } from '../context/DialogContext';
 import './CheckoutPage.css';
 
 const DEFAULT_SHIPPING_VALUES = {
@@ -46,6 +47,7 @@ const CheckoutPage = () => {
   const { cartItems, orderPrescription, getCartTotal, clearCart, removeUnavailableItems } = useCart();
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [priority, setPriority] = useState('normal');
+  const { alert } = useDialog();
 
   const [shippingStorageKey, setShippingStorageKey] = useState(() => {
     if (typeof window === 'undefined') {
@@ -186,6 +188,49 @@ const CheckoutPage = () => {
     toast.success('Shipping information saved');
   };
 
+  const validateShippingInfo = () => {
+    const shipping = watchedShipping;
+    const missingFields = [];
+
+    if (!shipping.fullName || shipping.fullName.trim() === '') {
+      missingFields.push('Full Name');
+    }
+    if (!shipping.email || shipping.email.trim() === '') {
+      missingFields.push('Email');
+    }
+    if (!shipping.phone || shipping.phone.trim() === '') {
+      missingFields.push('Phone Number');
+    }
+    if (!shipping.address || shipping.address.trim() === '') {
+      missingFields.push('Address');
+    }
+    if (!shipping.city || shipping.city.trim() === '') {
+      missingFields.push('City');
+    }
+    if (!shipping.postalCode || shipping.postalCode.trim() === '') {
+      missingFields.push('Postal Code');
+    }
+
+    return missingFields;
+  };
+
+  const handleProcessToPay = async () => {
+    const missingFields = validateShippingInfo();
+
+    if (missingFields.length > 0) {
+      await alert({
+        title: 'Shipping Information Incomplete',
+        message: `Please fill in the following required fields:\n\n${missingFields.join('\n')}`,
+        confirmText: 'OK'
+      });
+      setShowShippingModal(true);
+      return;
+    }
+
+    // All validation passed, proceed to payment
+    navigate('/checkout/payment');
+  };
+
   if (cartItems.length === 0) {
     return (
       <div className="checkout-page">
@@ -311,9 +356,8 @@ const CheckoutPage = () => {
                     type="button"
                     variant="primary"
                     size="large"
-                    onClick={() => navigate('/checkout/payment')}
+                    onClick={handleProcessToPay}
                     className="process-to-pay-button"
-                    disabled={Object.keys(errors).length > 0 || !watchedShipping.fullName}
                   >
                     Process to Pay
                   </Button>

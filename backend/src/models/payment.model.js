@@ -82,14 +82,25 @@ export const updatePaymentProof = async (orderId, receiptUrl) => {
 };
 
 export const approvePayment = async (orderId, adminId) => {
-  const [result] = await getPool().query(
-    `UPDATE payments
-     SET status = 'completed', 
-         captured_at = NOW()
-     WHERE order_id = ?
-     ORDER BY created_at DESC
-     LIMIT 1`,
+  const updated = await updatePaymentStatusForOrder(orderId, 'completed', { method: 'card', amount: 0 });
+  console.log(`[approvePayment] order ${orderId} updated: ${updated}`);
+  return updated;
+};
+
+export const rejectPayment = async (orderId, adminId) => {
+  console.log(`[rejectPayment] Starting rejection for order ${orderId}`);
+  const updated = await updatePaymentStatusForOrder(orderId, 'rejected', {
+    method: 'bank',
+    amount: 0
+  });
+  console.log(`[rejectPayment] order ${orderId} updated: ${updated}`);
+
+  // Verify the update
+  const [verify] = await getPool().query(
+    `SELECT id, order_id, status FROM payments WHERE order_id = ? ORDER BY created_at DESC LIMIT 1`,
     [orderId]
   );
-  return result.affectedRows > 0;
+  console.log(`[rejectPayment] Verification query returned:`, verify[0]);
+
+  return updated;
 };

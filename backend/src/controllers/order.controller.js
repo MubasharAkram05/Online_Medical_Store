@@ -282,25 +282,39 @@ export const listOrders = async (req, res, next) => {
   try {
     const orders = await getOrdersByUser(req.user.id);
     res.json({
-      orders: orders.map((order) => ({
-        id: order.id,
-        orderNumber: order.order_number,
-        status: order.status,
-        priority: order.priority || 'normal',
-        totalAmount: Number(order.total_amount),
-        paymentMethod: order.payment_method,
-        paymentStatus: (() => {
+      orders: orders.map((order) => {
+        const paymentStatus = (() => {
           if (order.payment_status) return order.payment_status;
           const paymentMethod = String(order.payment_method || '').toLowerCase().trim();
           const orderStatus = String(order.status || '').toLowerCase().trim();
+
           if (paymentMethod === 'cod') {
             return orderStatus === 'delivered' ? 'completed' : 'pending';
           }
-          return 'completed';
-        })(),
-        prescriptionVerified: Boolean(order.prescription_verified),
-        createdAt: order.created_at
-      }))
+
+          if (paymentMethod === 'card') {
+            return 'completed';
+          }
+
+          // For bank/wallet payment, default to pending until admin approval/rejection.
+          return 'pending';
+        })();
+
+        console.log(`[listOrders] Order ${order.id}: raw payment_status = ${order.payment_status}, final paymentStatus = ${paymentStatus}`);
+
+        return {
+          id: order.id,
+          orderNumber: order.order_number,
+          status: order.status,
+          priority: order.priority || 'normal',
+          totalAmount: Number(order.total_amount),
+          paymentMethod: order.payment_method,
+          paymentStatus,
+          prescriptionVerified: Boolean(order.prescription_verified),
+          hasPrescriptionRequired: Boolean(order.has_prescription_required),
+          createdAt: order.created_at
+        };
+      })
     });
   } catch (error) {
     next(error);

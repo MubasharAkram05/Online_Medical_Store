@@ -7,7 +7,11 @@ import { Navigate, useLocation } from 'react-router-dom';
  * Can be used as a wrapper for pages or components.
  */
 const AuthGuard = ({ children, roles = [] }) => {
-    const token = localStorage.getItem('token');
+       // Get the login token from localStorage
+      // If token doesn't exist, user is logged out
+    const token = localStorage.getItem('token'); 
+      // Get the raw user data from localStorage
+     // This is still a string at this point — not an object yet
     const userRaw = localStorage.getItem('user');
     let user = null;
     try {
@@ -15,8 +19,16 @@ const AuthGuard = ({ children, roles = [] }) => {
     } catch (error) {
         user = null;
     }
+    // Save the current page location
+    // So we can redirect back here after login
     const location = useLocation();
 
+   /* First Guard — Authentication Check
+    * If token doesn't exist OR user doesn't exist
+    * User is not logged in — redirect to login page
+    * Pass current location in state so we can
+    * redirect back to this page after successful login
+    */
     if (!token || !user) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
@@ -25,7 +37,10 @@ const AuthGuard = ({ children, roles = [] }) => {
     if (roles.length > 0 && !roles.includes(user.role)) {
         return <Navigate to="/" replace />;
     }
-
+    /* Both guards passed:
+    * User is logged in and has the correct role
+    * Render the wrapped child component
+    */
     return children;
 };
 

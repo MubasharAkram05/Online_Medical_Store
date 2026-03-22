@@ -24,6 +24,7 @@ import {
   adminUpdateSupplier,
   adminDeleteSupplier,
   adminApprovePayment,
+  adminRejectPayment,
   adminVerifyOrderItemPrescription,
   adminVerifyOrderPrescription,
   adminClearOrderData
@@ -161,6 +162,7 @@ router.patch(
   adminUpdateOrderStatus
 );
 router.patch('/orders/:id/approve-payment', adminApprovePayment);
+router.patch('/orders/:id/reject-payment', adminRejectPayment);
 router.delete('/orders/clear', adminClearOrderData);
 router.patch(
   '/orders/items/:orderItemId/prescription',
@@ -251,13 +253,27 @@ router.delete('/users/:id', adminDeleteUser);
 router.get('/suppliers', adminListSuppliers);
 router.post(
   '/suppliers',
-  [body('name').trim().isLength({ min: 2 }).withMessage('Supplier name is required')],
+  [
+    body('name').trim().isLength({ min: 2 }).withMessage('Supplier name is required'),
+    body('manufacturer')
+      .optional({ checkFalsy: true })
+      .trim()
+      .isLength({ max: 150 })
+      .withMessage('Manufacturer name is too long')
+  ],
   validateRequest,
   adminCreateSupplier
 );
 router.put(
   '/suppliers/:id',
-  [body('name').trim().isLength({ min: 2 }).withMessage('Supplier name is required')],
+  [
+    body('name').trim().isLength({ min: 2 }).withMessage('Supplier name is required'),
+    body('manufacturer')
+      .optional({ checkFalsy: true })
+      .trim()
+      .isLength({ max: 150 })
+      .withMessage('Manufacturer name is too long')
+  ],
   validateRequest,
   adminUpdateSupplier
 );

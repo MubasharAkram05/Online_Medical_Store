@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Card from '../components/common/Card';
@@ -13,11 +13,38 @@ const OrderDetailPage = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState('');
+  const [isReceiptPdf, setIsReceiptPdf] = useState(false);
+  const receiptInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!receiptFile) {
+      setReceiptPreviewUrl('');
+      setIsReceiptPdf(false);
+      return undefined;
+    }
+
+    const previewUrl = URL.createObjectURL(receiptFile);
+    setReceiptPreviewUrl(previewUrl);
+    setIsReceiptPdf(receiptFile.type === 'application/pdf');
+
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [receiptFile]);
 
   const formatStatus = (status) => {
     if (!status) return '—';
     if (status === 'pending_prescription') return 'Pending Prescription Approval';
     return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
+  };
+
+  const resolveReceiptUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:4000';
+    const normalizedPath = url.startsWith('/') ? url : `/${url}`;
+    return `${baseUrl}${normalizedPath}`;
   };
 
   useEffect(() => {
@@ -26,7 +53,7 @@ const OrderDetailPage = () => {
       return;
     }
 
-    const loadOrder = async () => {
+    const fetchOrder = async () => {
       try {
         const response = await orderService.getOrderById(id);
         const orderData = response.data?.order || null;
@@ -35,28 +62,15 @@ const OrderDetailPage = () => {
         console.log('Order loaded:', orderData);
         console.log('Order status:', orderData?.status);
 
-        // Check if order has prescription required items
         const hasPrescriptionItems = orderData?.items?.some(
           item => item.requiresPrescription === true || item.requiresPrescription === 1
         );
-        console.log('Order has prescription items:', hasPrescriptionItems);
 
-        // Trigger prescription reload event if order is completed/delivered
         if (orderData && (orderData.status === 'completed' || orderData.status === 'delivered') && hasPrescriptionItems) {
-          console.log('Triggering prescriptionUpdated event for completed order');
           if (typeof window !== 'undefined') {
-            setTimeout(() => {
-              console.log('Dispatching prescriptionUpdated event (500ms)');
-              window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
-            }, 500);
-            setTimeout(() => {
-              console.log('Dispatching prescriptionUpdated event (2s)');
-              window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
-            }, 2000);
-            setTimeout(() => {
-              console.log('Dispatching prescriptionUpdated event (4s)');
-              window.dispatchEvent(new CustomEvent('prescriptionUpdated'));
-            }, 4000);
+            setTimeout(() => window.dispatchEvent(new CustomEvent('prescriptionUpdated')), 500);
+            setTimeout(() => window.dispatchEvent(new CustomEvent('prescriptionUpdated')), 2000);
+            setTimeout(() => window.dispatchEvent(new CustomEvent('prescriptionUpdated')), 4000);
           }
         }
       } catch (error) {
@@ -67,7 +81,10 @@ const OrderDetailPage = () => {
       }
     };
 
-    loadOrder();
+    fetchOrder();
+
+    const poll = setInterval(fetchOrder, 8000);
+    return () => clearInterval(poll);
   }, [id, token, navigate]);
 
   const handleDownloadInvoice = async () => {
@@ -92,6 +109,51 @@ const OrderDetailPage = () => {
     }
   };
 
+  const handleReceiptUpload = async () => {
+    if (!receiptFile) {
+      toast.error('Please select a receipt file.');
+      return;
+    }
+
+    setUploadingReceipt(true);
+    try {
+      const formData = new FormData();
+      formData.append('proof', receiptFile);
+      await orderService.uploadPaymentProof(order.id, formData);
+      toast.success('Receipt uploaded successfully. Please wait for admin approval.');
+
+      // Reload order details
+      const response = await orderService.getOrderById(order.id);
+      setOrder(response.data?.order || null);
+      setReceiptFile(null);
+      if (receiptInputRef.current) {
+        receiptInputRef.current.value = '';
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error?.message || 'Failed to upload receipt.');
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
+
+  const handleReceiptFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setReceiptFile(null);
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only JPG, PNG, WEBP, and PDF files are allowed.');
+      event.target.value = '';
+      setReceiptFile(null);
+      return;
+    }
+
+    setReceiptFile(file);
+  };
+
   if (loading) {
     return (
       <div className="order-detail-page">
@@ -109,12 +171,23 @@ const OrderDetailPage = () => {
   return (
     <div className="order-detail-page">
       <div className="container">
+        {order?.payment?.status === 'rejected' && (
+          <div className="moving-notification">
+            <div className="notification-content">
+              ⚠️ Your payment receipt was rejected because of invalid details. Please update your valid receipt.
+            </div>
+          </div>
+        )}
+
         <div className="page-header">
           <div>
             <h1>Order {order.orderNumber}</h1>
             <p>Placed on {new Date(order.createdAt).toLocaleString()}</p>
           </div>
           <div className="header-actions">
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Refresh
+            </Button>
             <Button variant="outline" onClick={() => navigate('/orders')}>
               ← Back to Orders
             </Button>
@@ -135,8 +208,8 @@ const OrderDetailPage = () => {
                 <span className="label">Payment Method</span>
                 <span className="value" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   {order.paymentMethod.toUpperCase()}
-                  <span className={`status-badge payment-${order.payment?.status || (order.paymentMethod === 'cod' ? 'pending' : 'completed')}`} style={{ padding: '0.2rem 0.7rem', fontSize: '0.75rem', height: 'fit-content' }}>
-                    {formatStatus(order.payment?.status || (order.paymentMethod === 'cod' ? 'pending' : 'completed'))}
+                  <span className={`status-badge payment-${order.payment?.status || (order.paymentMethod === 'card' ? 'completed' : 'pending')}`} style={{ padding: '0.2rem 0.7rem', fontSize: '0.75rem', height: 'fit-content' }}>
+                    {formatStatus(order.payment?.status || (order.paymentMethod === 'card' ? 'completed' : 'pending'))}
                   </span>
                 </span>
               </div>
@@ -248,7 +321,7 @@ const OrderDetailPage = () => {
                   <div className="full-width">
                     <span className="label">Receipt</span>
                     <a
-                      href={order.payment.receiptUrl}
+                      href={resolveReceiptUrl(order.payment.receiptUrl)}
                       target="_blank"
                       rel="noreferrer"
                       className="receipt-link"
@@ -260,6 +333,60 @@ const OrderDetailPage = () => {
               </div>
             </Card>
           )}
+
+          {order.payment && order.payment.status === 'rejected' && (
+            <Card className="detail-card">
+              <h2>Re-upload Payment Receipt</h2>
+              <p className="rejected-notice">Your payment receipt was rejected. Please upload a valid receipt for approval.</p>
+              <div className="receipt-upload-section">
+                <input
+                  type="file"
+                  ref={receiptInputRef}
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  onChange={handleReceiptFileChange}
+                  className="receipt-file-input"
+                  id={`receipt-upload-${order.id}`}
+                />
+                <div className="receipt-upload-actions">
+                  <Button
+                    variant="outline"
+                    onClick={() => receiptInputRef.current?.click()}
+                    className="select-file-btn"
+                  >
+                    Select File
+                  </Button>
+                  <span className="selected-file-name">
+                    {receiptFile ? receiptFile.name : 'No file selected'}
+                  </span>
+                </div>
+                {receiptPreviewUrl && (
+                  <div className="receipt-preview-card">
+                    <span className="label">Selected Receipt Preview</span>
+                    {isReceiptPdf ? (
+                      <iframe
+                        src={receiptPreviewUrl}
+                        title="Selected receipt preview"
+                        className="receipt-preview-frame"
+                      />
+                    ) : (
+                      <img
+                        src={receiptPreviewUrl}
+                        alt="Selected receipt preview"
+                        className="receipt-preview-image"
+                      />
+                    )}
+                  </div>
+                )}
+                <Button
+                  variant="primary"
+                  onClick={handleReceiptUpload}
+                  disabled={uploadingReceipt || !receiptFile}
+                >
+                  {uploadingReceipt ? 'Uploading...' : 'Upload Receipt'}
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </div>
@@ -267,4 +394,3 @@ const OrderDetailPage = () => {
 };
 
 export default OrderDetailPage;
-

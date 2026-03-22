@@ -7,7 +7,7 @@ import { useDialog } from '../../context/DialogContext';
 import './AdminOrdersPage.css';
 
 const STATUS_OPTIONS = ['pending', 'pending_prescription', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
-const PAYMENT_STATUS_OPTIONS = ['pending', 'completed', 'failed', 'refunded'];
+const PAYMENT_STATUS_OPTIONS = ['pending', 'completed', 'failed', 'refunded', 'rejected'];
 const PRIORITY_OPTIONS = ['normal', 'high', 'urgent'];
 
 const AdminOrdersPage = () => {
@@ -32,6 +32,14 @@ const AdminOrdersPage = () => {
     if (!status) return '—';
     if (status === 'pending_prescription') return 'Pending Prescription Approval';
     return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
+  };
+
+  const resolveReceiptUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:4000';
+    const normalizedPath = url.startsWith('/') ? url : `/${url}`;
+    return `${baseUrl}${normalizedPath}`;
   };
 
   // Helper function to determine prescription verification status
@@ -221,6 +229,49 @@ const AdminOrdersPage = () => {
     } catch (error) {
       console.error('Error approving payment:', error);
       toast.error(error.response?.data?.error?.message || 'Failed to approve payment.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleRejectPayment = async (orderId) => {
+    const isConfirmed = await confirm({
+      title: 'Confirmation',
+      message: 'Are you sure you want to reject this payment? The user will be able to upload a new receipt.',
+      confirmText: 'Reject',
+      cancelText: 'Cancel',
+      variant: 'danger'
+    });
+    if (!isConfirmed) {
+      return;
+    }
+
+    setUpdatingId(orderId);
+    try {
+      await adminService.rejectPayment(orderId);
+      toast.success('Payment rejected. User can upload a new receipt.');
+
+      // Update local state
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === orderId
+            ? { ...order, paymentStatus: 'rejected' }
+            : order
+        )
+      );
+
+      // Update selected order if modal is open
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder(prev => ({
+          ...prev,
+          paymentStatus: 'rejected'
+        }));
+      }
+
+      setViewingReceipt(null);
+    } catch (error) {
+      console.error('Error rejecting payment:', error);
+      toast.error(error.response?.data?.error?.message || 'Failed to reject payment.');
     } finally {
       setUpdatingId(null);
     }
@@ -1062,7 +1113,7 @@ const AdminOrdersPage = () => {
                         variant="outline"
                         className="view-receipt-btn"
                         onClick={() => setViewingReceipt({
-                          url: `${process.env.REACT_APP_API_URL || ''}${selectedOrder.payment.receiptUrl}`,
+                          url: resolveReceiptUrl(selectedOrder.payment?.receiptUrl),
                           orderId: selectedOrder.id,
                           method: selectedOrder.paymentMethod
                         })}
@@ -1080,15 +1131,25 @@ const AdminOrdersPage = () => {
                 </div>
                 <div className="order-modal__actions">
                   {selectedOrder.paymentStatus === 'pending' && selectedOrder.paymentMethod !== 'cod' && (
-                    <Button
-                      type="button"
-                      variant="primary"
-                      className="verify-payment-btn"
-                      onClick={() => handleApprovePayment(selectedOrder.id)}
-                      disabled={updatingId === selectedOrder.id}
-                    >
-                      ✅ Approve Payment
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        onClick={() => handleRejectPayment(selectedOrder.id)}
+                        disabled={updatingId === selectedOrder.id}
+                      >
+                        ❌ Reject Payment
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        className="verify-payment-btn"
+                        onClick={() => handleApprovePayment(selectedOrder.id)}
+                        disabled={updatingId === selectedOrder.id}
+                      >
+                        ✅ Approve Payment
+                      </Button>
+                    </>
                   )}
                   <Button type="button" variant="outline" onClick={closeOrderModal}>
                     Close
@@ -1265,13 +1326,22 @@ const AdminOrdersPage = () => {
                   Close
                 </Button>
                 {selectedOrder?.paymentStatus === 'pending' && (
-                  <Button
-                    variant="primary"
-                    onClick={() => handleApprovePayment(viewingReceipt.orderId)}
-                    disabled={updatingId === viewingReceipt.orderId}
-                  >
-                    ✅ Approve & Confirm Order
-                  </Button>
+                  <>
+                    <Button
+                      variant="danger"
+                      onClick={() => handleRejectPayment(viewingReceipt.orderId)}
+                      disabled={updatingId === viewingReceipt.orderId}
+                    >
+                      ❌ Reject Payment
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={() => handleApprovePayment(viewingReceipt.orderId)}
+                      disabled={updatingId === viewingReceipt.orderId}
+                    >
+                      ✅ Approve & Confirm Order
+                    </Button>
+                  </>
                 )}
               </div>
             </div>

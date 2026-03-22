@@ -13,6 +13,17 @@ const OrdersPage = () => {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(null);
 
+  const loadOrders = async () => {
+    setLoading(true);
+    try {
+      const response = await orderService.getOrders();
+      setOrders(response.data?.orders || []);
+    } catch (error) {
+      toast.error('Unable to load orders.');
+    } finally {
+      setLoading(false);
+    }
+  };
   const formatStatus = (status) => {
     if (!status) return '—';
     if (status === 'pending_prescription') return 'Pending Prescription Approval';
@@ -25,18 +36,9 @@ const OrdersPage = () => {
       return;
     }
 
-    const loadOrders = async () => {
-      try {
-        const response = await orderService.getOrders();
-        setOrders(response.data?.orders || []);
-      } catch (error) {
-        toast.error('Unable to load orders.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadOrders();
+    const poll = setInterval(loadOrders, 10000); // Auto-refresh status every 10 seconds
+    return () => clearInterval(poll);
   }, [token, navigate]);
 
   const handleViewDetails = (id) => {
@@ -82,7 +84,12 @@ const OrdersPage = () => {
             <h1>Order History</h1>
             <p>Track your purchases and download invoices.</p>
           </div>
-          <div className="orders-badge">🧾</div>
+          <div className="orders-header-actions">
+            <Button variant="outline" onClick={loadOrders} disabled={loading}>
+              {loading ? 'Loading...' : 'Refresh'}
+            </Button>
+            <div className="orders-badge">🧾</div>
+          </div>
         </div>
 
         {orders.length === 0 ? (
@@ -108,9 +115,11 @@ const OrdersPage = () => {
                 <div className="orders-row" key={order.id}>
                   <div>
                     <div className="order-number">{order.orderNumber}</div>
-                    <div className="order-prescription">
-                      {order.prescriptionVerified ? 'Prescription Verified' : 'Awaiting Verification'}
-                    </div>
+                    {order.hasPrescriptionRequired && (
+                      <div className="order-prescription">
+                        {order.prescriptionVerified ? 'Prescription Verified' : 'Awaiting Verification'}
+                      </div>
+                    )}
                     <div className={`order-priority priority-${order.priority || 'normal'}`}>
                       Priority: {order.priority || 'normal'}
                     </div>

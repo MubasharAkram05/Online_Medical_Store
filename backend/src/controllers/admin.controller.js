@@ -45,7 +45,7 @@ import {
   updateSupplier,
   deleteSupplier
 } from '../models/supplier.model.js';
-import { updatePaymentStatusForOrder, approvePayment } from '../models/payment.model.js';
+import { updatePaymentStatusForOrder, approvePayment, rejectPayment } from '../models/payment.model.js';
 import {
   generateSalesReportPDF,
   generateInventoryReportPDF,
@@ -58,7 +58,7 @@ import {
 } from '../utils/reportCsv.js';
 
 const PRIORITY_OPTIONS = ['normal', 'high', 'urgent'];
-const PAYMENT_STATUS_OPTIONS = ['pending', 'completed', 'failed', 'refunded'];
+const PAYMENT_STATUS_OPTIONS = ['pending', 'completed', 'failed', 'refunded', 'rejected'];
 
 const formatMedicineResponse = (medicine) => ({
   id: medicine.id,
@@ -100,7 +100,7 @@ const parseInteractionNotes = (value) => {
   }
 };
 
-const mapAdminOrderResponse = (order, items) => ({
+const mapAdminOrderResponse = (order, items, payment = null) => ({
   id: order.id,
   orderNumber: order.order_number,
   status: order.status,
@@ -110,15 +110,31 @@ const mapAdminOrderResponse = (order, items) => ({
   shippingFee: Number(order.shipping_fee),
   paymentMethod: order.payment_method,
   paymentStatus: (() => {
+    if (payment?.status) return payment.status;
     if (order.payment_status) return order.payment_status;
     const paymentMethod = String(order.payment_method || '').toLowerCase().trim();
     const orderStatus = String(order.status || '').toLowerCase().trim();
+
     if (paymentMethod === 'cod') {
       return orderStatus === 'delivered' ? 'completed' : 'pending';
     }
-    return 'completed';
+
+    if (paymentMethod === 'card') {
+      return 'completed';
+    }
+
+    return 'pending';
   })(),
+  payment: {
+    method: payment?.method || order.payment_method,
+    status: payment?.status || order.payment_status || 'pending',
+    amount: payment ? Number(payment.amount) : Number(order.total_amount),
+    transactionId: payment?.transaction_id || null,
+    reference: payment?.reference || null,
+    receiptUrl: payment?.receipt_url || order.payment_receipt_url || null
+  },
   prescriptionVerified: Boolean(order.prescription_verified),
+  hasPrescriptionRequired: items.some(item => item.requiresPrescription),
   customer: {
     id: order.user_id,
     name: order.customer_name,
@@ -404,7 +420,7 @@ export const adminListOrders = async (req, res, next) => {
           file_mime_type: item.file_mime_type
         }));
 
-        return mapAdminOrderResponse(order, items);
+        return mapAdminOrderResponse(order, items, detailed.payment);
       })
     );
 
@@ -563,7 +579,7 @@ export const adminUpdateOrderDetails = async (req, res, next) => {
 
     res.json({
       message: 'Order updated successfully.',
-      order: updated ? mapAdminOrderResponse(updated.order, items) : null
+      order: updated ? mapAdminOrderResponse(updated.order, items, updated.payment) : null
     });
   } catch (error) {
     next(error);
@@ -1103,9 +1119,64 @@ export const adminApprovePayment = async (req, res, next) => {
     console.log(`Payment approved by admin ${req.user.id} (Name: ${req.user.name}) for order ${id} at ${new Date().toISOString()}`);
 
     const updated = await getOrderWithItemsAdmin(id);
+    const items = (updated?.items || []).map((item) => ({
+      id: item.id,
+      medicineId: item.medicine_id,
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: Number(item.unit_price),
+      totalPrice: Number(item.total_price),
+      requiresPrescription: Boolean(item.requires_prescription)
+    }));
+
     res.json({
       message: 'Payment approved and order confirmed.',
-      order: updated ? updated.order : null
+      order: updated ? mapAdminOrderResponse(updated.order, items, updated.payment) : null
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const adminRejectPayment = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const detailed = await getOrderWithItemsAdmin(id);
+
+    if (!detailed) {
+      return res.status(404).json({ error: { message: 'Order not found' } });
+    }
+
+    if (detailed.order.payment_method === 'cod') {
+      return res.status(400).json({ error: { message: 'COD orders do not require payment rejection' } });
+    }
+
+    // Update payment status to rejected, and ensure the order is not marked confirmed
+    await rejectPayment(id, req.user.id);
+    await updatePaymentStatusForOrder(id, 'rejected', {
+      method: detailed.order.payment_method,
+      amount: detailed.order.total_amount
+    });
+
+    // Keep order in pending state when payment is rejected
+    await updateOrderStatus(id, 'pending');
+
+    console.log(`Payment rejected by admin ${req.user.id} (Name: ${req.user.name}) for order ${id} at ${new Date().toISOString()}`);
+
+    const updated = await getOrderWithItemsAdmin(id);
+    const items = (updated?.items || []).map((item) => ({
+      id: item.id,
+      medicineId: item.medicine_id,
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: Number(item.unit_price),
+      totalPrice: Number(item.total_price),
+      requiresPrescription: Boolean(item.requires_prescription)
+    }));
+
+    res.json({
+      message: 'Payment rejected.',
+      order: updated ? mapAdminOrderResponse(updated.order, items, updated.payment) : null
     });
   } catch (error) {
     next(error);
