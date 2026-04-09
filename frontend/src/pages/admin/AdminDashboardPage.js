@@ -128,14 +128,18 @@ const AdminDashboardPage = () => {
       </div>
 
       <div className="admin-dashboard__cards">
-        <div className="summary-card">
-          <span className="summary-label">Total Products</span>
-          <span className="summary-value">{stats.totalProducts}</span>
-        </div>
-        <div className="summary-card">
-          <span className="summary-label">Total Orders</span>
-          <span className="summary-value">{stats.totalOrders}</span>
-        </div>
+<div className="summary-card">
+  <div className="summary-card-icon">💊</div>
+  <span className="summary-label">Total Products</span>
+  <span className="summary-value">{stats.totalProducts}</span>
+  <span className="summary-change positive">+12.5%</span>
+</div>
+<div className="summary-card">
+  <div className="summary-card-icon">📋</div>
+  <span className="summary-label">Total Orders</span>
+  <span className="summary-value">{stats.totalOrders}</span>
+  <span className="summary-change positive">+8.3%</span>
+</div>
         {userRole === 'admin' && (
           <>
             <div className="summary-card">
