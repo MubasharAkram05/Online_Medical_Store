@@ -1,19 +1,20 @@
 .admin-login-wrapper {
-  min-height: calc(100vh - 120px);
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4rem 1.5rem;
-  background: linear-gradient(135deg, #0f172a, #1e293b);
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, var(--wp-admin-sidebar-bg), var(--wp-admin-primary));
 }
 
 .admin-login-card {
   width: 100%;
   max-width: 420px;
-  background: #ffffff;
-  border-radius: 18px;
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
-  padding: 2.5rem 2.25rem;
+  background: var(--wp-admin-card-bg);
+  border: 1px solid var(--wp-admin-border);
+  border-radius: 4px;
+  box-shadow: var(--wp-admin-shadow);
+  padding: 3rem 2.5rem;
 }
 
 .admin-login-header {

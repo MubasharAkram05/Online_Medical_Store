@@ -1,7 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-// NavLink: Automatically adds an 'active' class when the link matches the current URL
-// Outlet: A placeholder where nested child routes are displayed
-// useNavigate: A hook to change pages programmatically (via code logic)
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import './AdminLayout.css';
 import Footer from './Footer';
@@ -16,23 +13,9 @@ const sidebarLinks = [
   { to: '/admin/settings', label: 'Settings', icon: '⚙️' }
 ];
 
-const dropdownLinks = [
-  { label: 'User Profile', to: '/admin/users' },
-  { label: 'Prescriptions', to: '/admin/prescriptions' },
-  { label: 'Suppliers', to: '/admin/suppliers' },
-  { label: 'Settings', to: '/admin/settings' }
-];
-/**
- * AdminLayout Component
- * Main layout wrapper for all admin/professional pages
- * Contains: info bar, header with navigation, main content area, footer
- * Handles: user authentication display, role based navigation, logout
- * Used as parent route — all admin pages render inside <Outlet />
- */
 const AdminLayout = () => {
-    // useNavigate hook — for programmatic navigation - used in logout and dropdown menu clicks
   const navigate = useNavigate();
-    // menuOpen state — controls profile dropdown visibility
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
@@ -44,7 +27,6 @@ const AdminLayout = () => {
   } catch (error) {
     user = {};
   }
-   // get user role — default to 'patient' if role not found
   const userRole = user.role || 'patient';
   const isAdmin = userRole === 'admin';
 
@@ -56,39 +38,15 @@ const AdminLayout = () => {
 
   const profileDisplayName = user.name ? user.name : 'Admin';
 
-  const getPageTitle = () => {
-    const path = location.pathname.split('/').pop();
-    const link = sidebarLinks.find(l => l.to.includes(path));
-    return link ? link.label : 'Dashboard';
-  };
-
-  if (!isAdmin) return <Outlet />;
-  /**
-   * handleLogout — clears all auth data and redirects to login
-   * Removes: token, refreshToken, user from localStorage
-   * Then navigates to login page
-   */
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     navigate('/login');
   };
-  /**
-   * filteredMainNavLinks — filters main navigation links based on user role
-   * Currently only admin can see all navigation links
-   * All other roles see no links
-   */
-  // Removed filteredMainNavLinks as sidebarLinks used instead
 
-  const filteredDropdownLinks = dropdownLinks.filter((link) => true);
-  /**
-   * useEffect — handles clicks outside the profile dropdown menu
-   * When user clicks anywhere outside the menu — close it
-   * Cleanup removes event listener when component unmounts — prevents memory leaks
-   */
   useEffect(() => {
-    const handleOutside = (event) => {
+    const handleOutsideClick = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setUserMenuOpen(false);
       }
@@ -96,21 +54,21 @@ const AdminLayout = () => {
         setSidebarOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  return (
-    <div className="admin-shell">
-      <div className="admin-info-bar">
-        <div className="admin-info-left">
-          <span>📞 Call Us: +92 300 1234567</span>
-          <span>✉️ Email: info@medicalstore.com</span>
-        </div>
-        <div className="admin-info-right">🚚 Free Delivery on orders over Rs. 5000</div>
-      </div>
+  if (!isAdmin) return <Outlet />;
 
-      {/* WP Top Bar */}
+  const getPageTitle = () => {
+    const path = location.pathname.split('/').pop();
+    const link = sidebarLinks.find(l => l.to.includes(path));
+    return link ? link.label : 'Dashboard';
+  };
+
+  return (
+    <div className="admin-wp-shell">
+      {/* Top Bar */}
       <div className="wp-admin-bar">
         <button className="wp-menu-toggle" onClick={() => setSidebarOpen(true)}>
           <span></span>
@@ -119,12 +77,12 @@ const AdminLayout = () => {
         </button>
         <div className="wp-logo">
           <span className="wp-logo-icon">W</span>
-          <span>Medical Store Admin</span>
+          <span>Medical Store</span>
         </div>
         <div className="wp-screen-title">{getPageTitle()}</div>
         <div className="wp-user-menu" ref={userMenuRef}>
           <button className="wp-user-toggle" onClick={() => setUserMenuOpen(prev => !prev)}>
-            <span className="user-avatar">👤</span>
+            <span className="user-avatar" title={profileDisplayName}>👤</span>
             <span className="user-name">{profileDisplayName}</span>
             <span className="user-caret">▾</span>
           </button>
@@ -139,7 +97,7 @@ const AdminLayout = () => {
               </div>
               <ul>
                 <li><NavLink to="/admin/dashboard">Dashboard</NavLink></li>
-                <li><button onClick={handleLogout}>Log Out</button></li>
+                <li><a href="#" onClick={handleLogout}>Log Out</a></li>
               </ul>
             </div>
           )}
@@ -147,7 +105,7 @@ const AdminLayout = () => {
       </div>
 
       <div className="wp-admin-body" ref={sidebarRef}>
-        {/* WP Sidebar */}
+        {/* Sidebar */}
         <aside className={`wp-admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
           <nav className="wp-admin-nav">
             <ul>
@@ -172,10 +130,6 @@ const AdminLayout = () => {
           <Outlet />
         </main>
       </div>
-      {/* main content area
-          Outlet renders the current matched nested route
-          example: /admin/dashboard renders Dashboard component here */}
-
 
       <Footer />
     </div>
@@ -183,3 +137,4 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
+
