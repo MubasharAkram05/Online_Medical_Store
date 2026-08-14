@@ -13,7 +13,10 @@ export const getPool = () => {
       database: env.db.database,
       waitForConnections: true,
       connectionLimit: 10,
-      queueLimit: 0
+      queueLimit: 0,
+      ssl: {
+        rejectUnauthorized: true
+      }
     });
   }
 
