@@ -404,6 +404,10 @@
   padding: 1.5rem;
 }
 
+.order-table {
+  overflow-x: auto;
+}
+
 .order-table table {
   width: 100%;
   border-collapse: collapse;
@@ -600,6 +604,10 @@
 .order-modal__section textarea {
   min-height: 80px;
   resize: vertical;
+}
+
+.order-modal__section {
+  overflow-x: auto;
 }
 
 .order-modal__section table {
@@ -1001,6 +1009,10 @@
     padding: 1.25rem;
   }
 
+  .order-table table {
+    min-width: 600px;
+  }
+
   .order-table th,
   .order-table td {
     padding: 0.6rem 0.8rem;
@@ -1061,6 +1073,10 @@
 
   .user-detail {
     flex: 1;
+  }
+
+  .order-modal__section table {
+    min-width: 480px;
   }
 
   .order-modal__section th,
