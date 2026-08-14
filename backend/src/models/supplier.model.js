@@ -1,7 +1,7 @@
 import { getPool } from '../config/database.js';
 
 export const listSuppliers = async () => {
-  const [rows] = await getPool().query(
+  const { rows } = await getPool().query(
     `SELECT *
      FROM suppliers
      ORDER BY name ASC`
@@ -11,10 +11,10 @@ export const listSuppliers = async () => {
 };
 
 export const findSupplierById = async (id) => {
-  const [rows] = await getPool().query(
+  const { rows } = await getPool().query(
     `SELECT *
      FROM suppliers
-     WHERE id = ?`,
+     WHERE id = $1`,
     [id]
   );
 
@@ -29,9 +29,10 @@ export const createSupplier = async ({
   manufacturer,
   notes
 }) => {
-  const [result] = await getPool().query(
+  const { rows } = await getPool().query(
     `INSERT INTO suppliers (name, email, phone, address, manufacturer, notes)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id`,
     [
       name,
       email || null,
@@ -42,7 +43,7 @@ export const createSupplier = async ({
     ]
   );
 
-  return result.insertId;
+  return rows[0].id;
 };
 
 export const updateSupplier = async (
@@ -58,14 +59,14 @@ export const updateSupplier = async (
 ) => {
   await getPool().query(
     `UPDATE suppliers
-     SET name = ?,
-         email = ?,
-         phone = ?,
-         address = ?,
-         manufacturer = ?,
-         notes = ?,
+     SET name = $1,
+         email = $2,
+         phone = $3,
+         address = $4,
+         manufacturer = $5,
+         notes = $6,
          updated_at = NOW()
-     WHERE id = ?`,
+     WHERE id = $7`,
     [
       name,
       email || null,
@@ -82,14 +83,13 @@ export const deleteSupplier = async (id) => {
   await getPool().query(
     `UPDATE medicines
      SET supplier_id = NULL
-     WHERE supplier_id = ?`,
+     WHERE supplier_id = $1`,
     [id]
   );
 
   await getPool().query(
     `DELETE FROM suppliers
-     WHERE id = ?`,
+     WHERE id = $1`,
     [id]
   );
 };
-

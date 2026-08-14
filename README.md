@@ -14,7 +14,7 @@ A full-stack web application for managing an online medical store with customer 
 ## Tech Stack
 
 - Frontend: React 18, React Router, Axios, React Hook Form
-- Backend: Node.js, Express.js, MySQL
+- Backend: Node.js, Express.js, PostgreSQL (e.g. [Neon](https://neon.tech) serverless Postgres)
 - Security: JWT, bcrypt, helmet, CORS, rate limiting
 
 ## Project Structure
@@ -33,7 +33,7 @@ omsms/
 
 - Node.js >= 18
 - npm
-- MySQL Server
+- A PostgreSQL database (e.g. a free [Neon](https://neon.tech) project, or local Postgres)
 
 ## Installation
 
@@ -57,11 +57,7 @@ Create `backend/.env` and configure values:
 PORT=4000
 APP_NAME=Online Medical Store API
 
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=online_medical_store
+DATABASE_URL=postgresql://user:password@ep-example-123456.us-east-2.aws.neon.tech/online_medical_store?sslmode=require
 
 JWT_ACCESS_SECRET=change_me_access_secret
 JWT_ACCESS_EXPIRES_IN=15m
@@ -130,12 +126,13 @@ This is a monorepo containing two independently deployable apps, so create
 - Import the repo in Vercel and set **Root Directory** to `backend`.
 - Vercel picks up `backend/vercel.json`, which routes all requests to the
   serverless function at `backend/api/index.js` (the same Express app used
-  locally, wrapped with `serverless-http`).
+  locally, called directly with Vercel's `(req, res)`).
 - Add all variables from `backend/.env.example` as Environment Variables in
   the Vercel project settings. In particular:
-  - `DB_HOST`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` must point at a **hosted**
-    MySQL instance (e.g. PlanetScale, Railway, Aiven) — Vercel functions
-    cannot reach a MySQL server on your local machine.
+  - `DATABASE_URL` must point at a **hosted** Postgres instance — e.g. a
+    [Neon](https://neon.tech) serverless Postgres database, which pairs
+    naturally with Vercel's serverless functions. Vercel functions cannot
+    reach a Postgres server on your local machine.
   - `CORS_ORIGIN` should be your frontend's Vercel URL (e.g.
     `https://your-frontend.vercel.app`).
   - `FRONTEND_URL` should also be the frontend's deployed URL.

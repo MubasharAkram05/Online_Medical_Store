@@ -157,11 +157,11 @@ const mapAdminOrderResponse = (order, items, payment = null) => ({
 export const getAdminOverview = async (req, res, next) => {
   try {
     const pool = getPool();
-    const [[{ totalUsers }]] = await pool.query('SELECT COUNT(*) AS totalUsers FROM users');
-    const [[{ totalOrders, totalRevenue }]] = await pool.query(
-      'SELECT COUNT(*) AS totalOrders, IFNULL(SUM(total_amount), 0) AS totalRevenue FROM orders'
+    const { rows: [{ totalusers: totalUsers }] } = await pool.query('SELECT COUNT(*) AS totalUsers FROM users');
+    const { rows: [{ totalorders: totalOrders, totalrevenue: totalRevenue }] } = await pool.query(
+      'SELECT COUNT(*) AS totalOrders, COALESCE(SUM(total_amount), 0) AS totalRevenue FROM orders'
     );
-    const [[{ totalProducts }]] = await pool.query('SELECT COUNT(*) AS totalProducts FROM medicines');
+    const { rows: [{ totalproducts: totalProducts }] } = await pool.query('SELECT COUNT(*) AS totalProducts FROM medicines');
     const lowStock = await findLowStockMedicines(5);
     const expiring = await findExpiringMedicines(30);
     const products = await listMedicines({});
@@ -1194,14 +1194,14 @@ export const adminVerifyOrderItemPrescription = async (req, res, next) => {
   try {
     const pool = getPool();
     // 1. Get order item and associated prescription
-    const [itemRows] = await pool.query(
+    const { rows: itemRows } = await pool.query(
       `SELECT oi.*, p.id AS p_id, p.status AS p_status, o.status AS o_status, o.order_number, u.email AS customer_email, m.name AS medicine_name
        FROM order_items oi
        JOIN orders o ON o.id = oi.order_id
        JOIN users u ON u.id = o.user_id
        JOIN medicines m ON m.id = oi.medicine_id
        LEFT JOIN prescriptions p ON p.id = oi.prescription_id
-       WHERE oi.id = ?`,
+       WHERE oi.id = $1`,
       [orderItemId]
     );
 
@@ -1216,34 +1216,34 @@ export const adminVerifyOrderItemPrescription = async (req, res, next) => {
 
     // 2. Update order item status
     await pool.query(
-      `UPDATE order_items 
-       SET prescription_status = ?, 
-           prescription_notes = ?, 
-           prescription_verified_by = ?, 
-           prescription_verified_at = NOW() 
-       WHERE id = ?`,
+      `UPDATE order_items
+       SET prescription_status = $1,
+           prescription_notes = $2,
+           prescription_verified_by = $3,
+           prescription_verified_at = NOW()
+       WHERE id = $4`,
       [status, notes || null, req.user.id, orderItemId]
     );
 
     // 3. Rejection logic: If rejected, mark the global prescription as rejected too
     if (status === 'declined') {
       await pool.query(
-        `UPDATE prescriptions SET status = 'rejected', notes = COALESCE(?, notes) WHERE id = ?`,
+        `UPDATE prescriptions SET status = 'rejected', notes = COALESCE($1, notes) WHERE id = $2`,
         [notes || 'Rejected in order review', item.prescription_id]
       );
     }
 
     // 4. Check if all items in this order are now verified
-    const [allItemRows] = await pool.query(
-      `SELECT prescription_status, medicine_id 
-       FROM order_items 
-       WHERE order_id = ?`,
+    const { rows: allItemRows } = await pool.query(
+      `SELECT prescription_status, medicine_id
+       FROM order_items
+       WHERE order_id = $1`,
       [item.order_id]
     );
 
     // Fetch medicine details to see which items require prescription
     const medicineIds = allItemRows.map(r => r.medicine_id);
-    const [medicines] = await pool.query(`SELECT id, requires_prescription FROM medicines WHERE id IN (?)`, [medicineIds]);
+    const { rows: medicines } = await pool.query('SELECT id, requires_prescription FROM medicines WHERE id = ANY($1)', [medicineIds]);
     const medicinesMap = new Map(medicines.map(m => [m.id, m.requires_prescription]));
 
     const allVerified = allItemRows.every(row => {
@@ -1256,12 +1256,12 @@ export const adminVerifyOrderItemPrescription = async (req, res, next) => {
       // Update overall order status if it was pending prescription
       const newStatus = item.o_status === 'pending_prescription' ? 'pending' : item.o_status;
       await pool.query(
-        `UPDATE orders SET prescription_verified = 1, status = ? WHERE id = ?`,
+        `UPDATE orders SET prescription_verified = true, status = $1 WHERE id = $2`,
         [newStatus, item.order_id]
       );
     } else {
       await pool.query(
-        `UPDATE orders SET prescription_verified = 0 WHERE id = ?`,
+        `UPDATE orders SET prescription_verified = false WHERE id = $1`,
         [item.order_id]
       );
     }
@@ -1294,11 +1294,11 @@ export const adminVerifyOrderPrescription = async (req, res, next) => {
     const pool = getPool();
 
     // 1. Get order and items info
-    const [items] = await pool.query(
+    const { rows: items } = await pool.query(
       `SELECT oi.id, oi.prescription_id, o.user_id, o.email as customer_email, o.order_number
        FROM order_items oi
        JOIN orders o ON o.id = oi.order_id
-       WHERE o.id = ? AND oi.prescription_id IS NOT NULL`,
+       WHERE o.id = $1 AND oi.prescription_id IS NOT NULL`,
       [orderId]
     );
 
@@ -1308,12 +1308,12 @@ export const adminVerifyOrderPrescription = async (req, res, next) => {
 
     // 2. Update all order items that have a prescription
     await pool.query(
-      `UPDATE order_items 
-       SET prescription_status = ?, 
-           prescription_notes = ?, 
-           prescription_verified_by = ?, 
-           prescription_verified_at = NOW() 
-       WHERE order_id = ? AND prescription_id IS NOT NULL`,
+      `UPDATE order_items
+       SET prescription_status = $1,
+           prescription_notes = $2,
+           prescription_verified_by = $3,
+           prescription_verified_at = NOW()
+       WHERE order_id = $4 AND prescription_id IS NOT NULL`,
       [status, notes || null, req.user.id, orderId]
     );
 
@@ -1321,12 +1321,12 @@ export const adminVerifyOrderPrescription = async (req, res, next) => {
     const prescriptionId = items[0].prescription_id;
     if (status === 'declined') {
       await pool.query(
-        `UPDATE prescriptions SET status = 'rejected', notes = COALESCE(?, notes) WHERE id = ?`,
+        `UPDATE prescriptions SET status = 'rejected', notes = COALESCE($1, notes) WHERE id = $2`,
         [notes || 'Rejected in order review', prescriptionId]
       );
     } else if (status === 'approved') {
       await pool.query(
-        `UPDATE prescriptions SET status = 'verified' WHERE id = ?`,
+        `UPDATE prescriptions SET status = 'verified' WHERE id = $1`,
         [prescriptionId]
       );
     }
@@ -1334,15 +1334,15 @@ export const adminVerifyOrderPrescription = async (req, res, next) => {
     // 4. Update overall order status
     if (status === 'approved') {
       await pool.query(
-        `UPDATE orders 
-         SET prescription_verified = 1, 
-             status = CASE WHEN status = 'pending_prescription' THEN 'pending' ELSE status END 
-         WHERE id = ?`,
+        `UPDATE orders
+         SET prescription_verified = true,
+             status = CASE WHEN status = 'pending_prescription' THEN 'pending' ELSE status END
+         WHERE id = $1`,
         [orderId]
       );
     } else {
       await pool.query(
-        `UPDATE orders SET prescription_verified = 0 WHERE id = ?`,
+        `UPDATE orders SET prescription_verified = false WHERE id = $1`,
         [orderId]
       );
     }
@@ -1375,14 +1375,14 @@ export const adminClearOrderData = async (req, res, next) => {
     let params = [];
 
     if (startDate && endDate) {
-      queryCondition = 'WHERE created_at BETWEEN ? AND ?';
+      queryCondition = 'WHERE created_at BETWEEN $1 AND $2';
       params = [`${startDate} 00:00:00`, `${endDate} 23:59:59`];
     } else if (days && days !== 'all') {
       const numDays = Number(days);
       if (isNaN(numDays)) {
         return res.status(400).json({ error: { message: 'Invalid days parameter' } });
       }
-      queryCondition = 'WHERE created_at >= NOW() - INTERVAL ? DAY';
+      queryCondition = "WHERE created_at >= NOW() - ($1 * INTERVAL '1 day')";
       params = [numDays];
     } else if (days === 'all') {
       queryCondition = '';
@@ -1390,9 +1390,9 @@ export const adminClearOrderData = async (req, res, next) => {
       return res.status(400).json({ error: { message: 'Missing deletion criteria' } });
     }
 
-    const connection = await pool.getConnection();
+    const connection = await pool.connect();
     try {
-      await connection.beginTransaction();
+      await connection.query('BEGIN');
 
       // Delete payments first (FK dependency)
       await connection.query(`DELETE FROM payments WHERE order_id IN (SELECT id FROM orders ${queryCondition})`, params);
@@ -1401,15 +1401,15 @@ export const adminClearOrderData = async (req, res, next) => {
       await connection.query(`DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders ${queryCondition})`, params);
 
       // Finally delete orders
-      const [result] = await connection.query(`DELETE FROM orders ${queryCondition}`, params);
+      const result = await connection.query(`DELETE FROM orders ${queryCondition}`, params);
 
-      await connection.commit();
+      await connection.query('COMMIT');
       res.json({
         message: 'Order data cleared successfully.',
-        clearedCount: result.affectedRows
+        clearedCount: result.rowCount
       });
     } catch (err) {
-      await connection.rollback();
+      await connection.query('ROLLBACK');
       throw err;
     } finally {
       connection.release();

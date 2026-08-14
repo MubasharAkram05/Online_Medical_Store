@@ -3,7 +3,7 @@ import { getPool } from './src/config/database.js';
 async function checkReferences() {
     const pool = getPool();
     try {
-        const [duplicates] = await pool.query(`
+        const { rows: duplicates } = await pool.query(`
       SELECT m.id, m.name, m.manufacturer
       FROM medicines m
       INNER JOIN (
@@ -21,8 +21,8 @@ async function checkReferences() {
         }
 
         const duplicateIds = duplicates.map(d => d.id);
-        const [references] = await pool.query(
-            'SELECT medicine_id, COUNT(*) as count FROM order_items WHERE medicine_id IN (?) GROUP BY medicine_id',
+        const { rows: references } = await pool.query(
+            'SELECT medicine_id, COUNT(*) as count FROM order_items WHERE medicine_id = ANY($1) GROUP BY medicine_id',
             [duplicateIds]
         );
 

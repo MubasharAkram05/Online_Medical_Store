@@ -1,10 +1,11 @@
 import { getPool } from '../config/database.js';
 
 export const createPayment = async (connection, payment) => {
-  const [result] = await connection.query(
+  const { rows } = await connection.query(
     `INSERT INTO payments
       (order_id, method, status, amount, transaction_id, reference, receipt_url, captured_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING id`,
     [
       payment.orderId,
       payment.method,
@@ -17,14 +18,14 @@ export const createPayment = async (connection, payment) => {
     ]
   );
 
-  return result.insertId;
+  return rows[0].id;
 };
 
 export const getPaymentByOrderId = async (orderId) => {
-  const [rows] = await getPool().query(
+  const { rows } = await getPool().query(
     `SELECT *
      FROM payments
-     WHERE order_id = ?
+     WHERE order_id = $1
      ORDER BY created_at DESC
      LIMIT 1`,
     [orderId]
@@ -35,10 +36,10 @@ export const getPaymentByOrderId = async (orderId) => {
 
 export const updatePaymentStatusForOrder = async (orderId, status, fallback = {}) => {
   const pool = getPool();
-  const [rows] = await pool.query(
+  const { rows } = await pool.query(
     `SELECT id
      FROM payments
-     WHERE order_id = ?
+     WHERE order_id = $1
      ORDER BY created_at DESC
      LIMIT 1`,
     [orderId]
@@ -49,9 +50,9 @@ export const updatePaymentStatusForOrder = async (orderId, status, fallback = {}
   if (existing) {
     await pool.query(
       `UPDATE payments
-       SET status = ?, captured_at = CASE WHEN ? = 'completed' THEN NOW() ELSE captured_at END
-       WHERE id = ?`,
-      [status, status, existing.id]
+       SET status = $1, captured_at = CASE WHEN $1 = 'completed' THEN NOW() ELSE captured_at END
+       WHERE id = $2`,
+      [status, existing.id]
     );
     return existing.id;
   }
@@ -59,26 +60,27 @@ export const updatePaymentStatusForOrder = async (orderId, status, fallback = {}
   const method = fallback.method || 'cod';
   const amount = fallback.amount || 0;
 
-  const [result] = await pool.query(
+  const { rows: inserted } = await pool.query(
     `INSERT INTO payments
       (order_id, method, status, amount)
-     VALUES (?, ?, ?, ?)`,
+     VALUES ($1, $2, $3, $4)
+     RETURNING id`,
     [orderId, method, status, amount]
   );
 
-  return result.insertId;
+  return inserted[0].id;
 };
 
 export const updatePaymentProof = async (orderId, receiptUrl) => {
-  const [result] = await getPool().query(
+  const result = await getPool().query(
     `UPDATE payments
-     SET receipt_url = ?, status = 'pending'
-     WHERE order_id = ?
-     ORDER BY created_at DESC
-     LIMIT 1`,
+     SET receipt_url = $1, status = 'pending'
+     WHERE id = (
+       SELECT id FROM payments WHERE order_id = $2 ORDER BY created_at DESC LIMIT 1
+     )`,
     [receiptUrl, orderId]
   );
-  return result.affectedRows > 0;
+  return result.rowCount > 0;
 };
 
 export const approvePayment = async (orderId, adminId) => {
@@ -96,8 +98,8 @@ export const rejectPayment = async (orderId, adminId) => {
   console.log(`[rejectPayment] order ${orderId} updated: ${updated}`);
 
   // Verify the update
-  const [verify] = await getPool().query(
-    `SELECT id, order_id, status FROM payments WHERE order_id = ? ORDER BY created_at DESC LIMIT 1`,
+  const { rows: verify } = await getPool().query(
+    `SELECT id, order_id, status FROM payments WHERE order_id = $1 ORDER BY created_at DESC LIMIT 1`,
     [orderId]
   );
   console.log(`[rejectPayment] Verification query returned:`, verify[0]);

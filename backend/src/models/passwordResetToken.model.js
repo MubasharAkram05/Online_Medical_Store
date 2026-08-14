@@ -1,22 +1,23 @@
 import { getPool } from '../config/database.js';
 
 export const createPasswordResetToken = async ({ userId, tokenHash, expiresAt }) => {
-  const [result] = await getPool().query(
+  const { rows } = await getPool().query(
     `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
-     VALUES (?, ?, ?)`,
+     VALUES ($1, $2, $3)
+     RETURNING id`,
     [userId, tokenHash, expiresAt]
   );
 
-  return result.insertId;
+  return rows[0].id;
 };
 
 export const findValidResetToken = async (tokenHash) => {
-  const [rows] = await getPool().query(
+  const { rows } = await getPool().query(
     `SELECT prt.*, users.email
      FROM password_reset_tokens prt
      INNER JOIN users ON users.id = prt.user_id
-     WHERE prt.token_hash = ?
-       AND prt.used = 0
+     WHERE prt.token_hash = $1
+       AND prt.used = false
        AND prt.expires_at > NOW()`,
     [tokenHash]
   );
@@ -27,9 +28,8 @@ export const findValidResetToken = async (tokenHash) => {
 export const markTokenUsed = async (id) => {
   await getPool().query(
     `UPDATE password_reset_tokens
-     SET used = 1
-     WHERE id = ?`,
+     SET used = true
+     WHERE id = $1`,
     [id]
   );
 };
-

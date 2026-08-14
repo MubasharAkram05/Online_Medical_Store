@@ -1,8 +1,10 @@
-import mysql from 'mysql2/promise';
+import pg from 'pg';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import dotenv from 'dotenv';
+
+const { Client } = pg;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -10,53 +12,43 @@ const __dirname = dirname(__filename);
 // Load env vars
 dotenv.config({ path: join(__dirname, '..', 'backend', '.env') });
 
-const config = {
-    host: process.env.DB_HOST || 'localhost',
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'online_medical_store'
-};
+const databaseUrl = process.env.DATABASE_URL;
 
 const setupDatabase = async () => {
-    let connection;
+    let client;
     try {
         console.log('🚀 Starting Database Setup...\n');
 
-        // 1. Connect without database first
-        connection = await mysql.createConnection({
-            host: config.host,
-            port: config.port,
-            user: config.user,
-            password: config.password,
-            multipleStatements: true
+        if (!databaseUrl) {
+            throw new Error('DATABASE_URL is not set. Point it at your Neon (or other Postgres) connection string.');
+        }
+
+        // 1. Connect to the database (Neon databases are created via the
+        // Neon dashboard/API, not from application code, so DATABASE_URL
+        // must already point at an existing database).
+        client = new Client({
+            connectionString: databaseUrl,
+            ssl: { rejectUnauthorized: false }
         });
+        await client.connect();
 
-        console.log('✅ Connected to MySQL server.');
+        console.log('✅ Connected to PostgreSQL server.');
 
-        // 2. Create database if not exists
-        await connection.query(`CREATE DATABASE IF NOT EXISTS ${config.database} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
-        console.log(`✅ Database "${config.database}" ensured.`);
-
-        // 3. Switch to the database
-        await connection.query(`USE ${config.database};`);
-        console.log(`✅ Switched to database "${config.database}".`);
-
-        // 4. Read and execute schema.sql
+        // 2. Read and execute schema.sql
         const schemaPath = join(__dirname, '..', 'database', 'schema.sql');
         const schemaSQL = readFileSync(schemaPath, 'utf8');
 
         console.log('⏳ Executing schema.sql...');
-        await connection.query(schemaSQL);
+        await client.query(schemaSQL);
         console.log('✅ Schema created successfully.');
 
-        // 5. Seed medicines (reusing logic from seed-medicines.js but integrated here)
+        // 3. Seed medicines (reusing logic from seed-medicines.js but integrated here)
         const seedPath = join(__dirname, '..', 'database', 'seeds', 'medicines_seed.sql');
         const seedSQL = readFileSync(seedPath, 'utf8');
 
         // Check if medicines exist
-        const [rows] = await connection.query('SELECT COUNT(*) as count FROM medicines');
-        if (rows[0].count > 0) {
+        const { rows } = await client.query('SELECT COUNT(*) as count FROM medicines');
+        if (Number(rows[0].count) > 0) {
             console.log(`⚠️  Medicines table already has ${rows[0].count} records. Skipping seed.`);
         } else {
             console.log('⏳ Seeding medicines...');
@@ -71,7 +63,7 @@ const setupDatabase = async () => {
                 .trim();
 
             if (cleanedSeedSQL) {
-                await connection.query(cleanedSeedSQL);
+                await client.query(cleanedSeedSQL);
                 console.log('✅ Medicines seeded successfully.');
             }
         }
@@ -85,13 +77,13 @@ const setupDatabase = async () => {
         if (error.code) console.error('   Code:', error.code);
 
         console.log('\n💡 Troubleshooting:');
-        console.log('   - Ensure MySQL is running');
-        console.log('   - Check DB_USER and DB_PASSWORD in .env');
-        console.log('   - Ensure you have permission to create databases');
+        console.log('   - Ensure DATABASE_URL points at a reachable Postgres/Neon instance');
+        console.log('   - Check that the database in DATABASE_URL already exists');
+        console.log('   - Ensure your Neon role has permission to create tables');
 
         process.exit(1);
     } finally {
-        if (connection) await connection.end();
+        if (client) await client.end();
     }
 };
 
