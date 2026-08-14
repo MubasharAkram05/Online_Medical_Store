@@ -1,8 +1,9 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { env } from '../config/env.js';
 
-const uploadRoot = path.join(process.cwd(), 'uploads');
+const uploadRoot = path.resolve(env.uploadDir);
 const prescriptionDir = path.join(uploadRoot, 'prescriptions');
 const medicineImageDir = path.join(uploadRoot, 'medicines');
 const profilePicDir = path.join(uploadRoot, 'profiles');

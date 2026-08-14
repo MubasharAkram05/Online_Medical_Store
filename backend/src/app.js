@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
@@ -13,6 +12,10 @@ import medicineRoutes from './routes/medicine.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 
 const app = express();
+
+// Required for express-rate-limit and req.ip to work correctly behind
+// Vercel's (and other) reverse proxies, which set X-Forwarded-For.
+app.set('trust proxy', 1);
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
@@ -29,11 +32,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/api', apiLimiter);
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 app.use(
   '/uploads',
-  express.static(path.join(__dirname, '..', 'uploads'), {
+  express.static(path.resolve(env.uploadDir), {
     setHeaders: (res) => {
       res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     }

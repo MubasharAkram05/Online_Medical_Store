@@ -120,6 +120,46 @@ npm start
 - `prescription`
 - `admin`
 
+## Deploying to Vercel
+
+This is a monorepo containing two independently deployable apps, so create
+**two separate Vercel projects** pointing at this same repository:
+
+### 1. Backend project (root directory: `backend`)
+
+- Import the repo in Vercel and set **Root Directory** to `backend`.
+- Vercel picks up `backend/vercel.json`, which routes all requests to the
+  serverless function at `backend/api/index.js` (the same Express app used
+  locally, wrapped with `serverless-http`).
+- Add all variables from `backend/.env.example` as Environment Variables in
+  the Vercel project settings. In particular:
+  - `DB_HOST`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` must point at a **hosted**
+    MySQL instance (e.g. PlanetScale, Railway, Aiven) — Vercel functions
+    cannot reach a MySQL server on your local machine.
+  - `CORS_ORIGIN` should be your frontend's Vercel URL (e.g.
+    `https://your-frontend.vercel.app`).
+  - `FRONTEND_URL` should also be the frontend's deployed URL.
+- **File uploads**: Vercel functions run on a read-only filesystem except
+  for `/tmp`, and `/tmp` is not persisted between invocations. Prescription,
+  payment-proof, and medicine-image uploads will work per-request but will
+  **not** be durably stored. For a real deployment, swap the disk storage in
+  `backend/src/middleware/upload.middleware.js` for an object storage
+  provider (S3, Cloudinary, Vercel Blob, etc.) before relying on uploads in
+  production.
+- After deploying, note the backend's URL (e.g.
+  `https://your-backend.vercel.app`) — the API is served at
+  `https://your-backend.vercel.app/api/...`.
+
+### 2. Frontend project (root directory: `frontend`)
+
+- Import the repo again as a second Vercel project and set **Root
+  Directory** to `frontend`. Vercel auto-detects the Create React App build
+  (`npm run build`, output `build/`).
+- `frontend/vercel.json` adds a rewrite so client-side routes (React Router)
+  resolve correctly on refresh/deep-link.
+- Add environment variable `REACT_APP_API_URL` set to
+  `https://your-backend.vercel.app/api`.
+
 ## Submission Notes
 
 Before sharing/submitting ZIP:
