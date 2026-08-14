@@ -27,9 +27,22 @@ const ensureInitialized = () => {
 
 const handler = serverless(app);
 
+const withTimeout = (promise, ms) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms))
+  ]);
+
 export default async function (req, res) {
+  // Let /health respond even if the database is unreachable, so it stays
+  // useful for diagnosing connectivity issues instead of hanging for the
+  // full function timeout on every request.
+  if (req.url === '/health' || req.url === '/api/health') {
+    return handler(req, res);
+  }
+
   try {
-    await ensureInitialized();
+    await withTimeout(ensureInitialized(), 8000);
   } catch (error) {
     logger.error({ err: error }, 'Failed to initialize backend');
     res.statusCode = 503;
