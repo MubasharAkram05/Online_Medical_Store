@@ -1,4 +1,3 @@
-import serverless from 'serverless-http';
 import app from '../src/app.js';
 import { testConnection } from '../src/config/database.js';
 import { ensureDefaultAdmin } from '../src/utils/bootstrapAdmin.js';
@@ -25,20 +24,23 @@ const ensureInitialized = () => {
   return initPromise;
 };
 
-const handler = serverless(app);
-
 const withTimeout = (promise, ms) =>
   Promise.race([
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms))
   ]);
 
-export default async function (req, res) {
+// Vercel's Node runtime calls this with plain (req, res) — an Express app is
+// already a valid handler for that signature, so it's invoked directly.
+// (A prior version wrapped it with serverless-http, which expects an AWS
+// Lambda-style event/context and never wrote a response to Vercel's req/res,
+// causing every request to hang until the function timed out.)
+export default async function handler(req, res) {
   // Let /health respond even if the database is unreachable, so it stays
   // useful for diagnosing connectivity issues instead of hanging for the
   // full function timeout on every request.
   if (req.url === '/health' || req.url === '/api/health') {
-    return handler(req, res);
+    return app(req, res);
   }
 
   try {
@@ -51,5 +53,5 @@ export default async function (req, res) {
     return;
   }
 
-  return handler(req, res);
+  return app(req, res);
 }
