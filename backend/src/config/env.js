@@ -49,7 +49,10 @@ export const env = {
   corsOrigin: toList(process.env.CORS_ORIGIN, ['http://localhost:3000']),
   
   // File Upload Configuration
-  uploadDir: process.env.UPLOAD_DIR || './uploads',
+  // Vercel's serverless functions have a read-only filesystem except for /tmp,
+  // and /tmp is wiped between invocations, so uploads are not persisted across
+  // requests there. Set UPLOAD_DIR to point at external storage in production.
+  uploadDir: process.env.UPLOAD_DIR || (process.env.VERCEL ? '/tmp/uploads' : './uploads'),
   maxFileSize: Number(process.env.MAX_FILE_SIZE || 5242880), // 5MB
   allowedFileTypes: (process.env.ALLOWED_FILE_TYPES || 'jpg,jpeg,png,pdf').split(','),
   
