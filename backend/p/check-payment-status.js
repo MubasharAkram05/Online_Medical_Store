@@ -1,19 +1,16 @@
-import mysql from 'mysql2/promise';
+import pg from 'pg';
 
-const config = {
-  host: process.env.DB_HOST || 'localhost',
-  port: Number(process.env.DB_PORT || 3306),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'online_medical_store'
-};
+const { Pool } = pg;
 
 async function checkPaymentStatus(orderId) {
-  const pool = mysql.createPool(config);
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
   try {
     // Get the latest payment status for a specific order
-    const [rows] = await pool.query(
-      `SELECT status FROM payments WHERE order_id = ? ORDER BY created_at DESC LIMIT 1`,
+    const { rows } = await pool.query(
+      `SELECT status FROM payments WHERE order_id = $1 ORDER BY created_at DESC LIMIT 1`,
       [orderId]
     );
 
@@ -24,7 +21,7 @@ async function checkPaymentStatus(orderId) {
     }
 
     // Alternative: Get payment status as part of order query
-    const [orderRows] = await pool.query(
+    const { rows: orderRows } = await pool.query(
       `SELECT
         o.id,
         o.order_number,
@@ -37,7 +34,7 @@ async function checkPaymentStatus(orderId) {
           LIMIT 1
         ) AS payment_status
        FROM orders o
-       WHERE o.id = ?`,
+       WHERE o.id = $1`,
       [orderId]
     );
 

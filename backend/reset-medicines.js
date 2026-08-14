@@ -9,7 +9,7 @@ const __dirname = dirname(__filename);
 const resetMedicines = async () => {
     try {
         const pool = getPool();
-        const connection = await pool.getConnection();
+        const connection = await pool.connect();
 
         console.log('🗑️  Clearing existing medicines...');
         await connection.query('DELETE FROM medicines');

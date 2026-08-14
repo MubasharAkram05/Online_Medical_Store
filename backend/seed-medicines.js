@@ -16,11 +16,11 @@ const seedMedicines = async () => {
 
     // Get database connection
     const pool = getPool();
-    const connection = await pool.getConnection();
+    const connection = await pool.connect();
 
     // Check if medicines already exist
-    const [existing] = await connection.query('SELECT COUNT(*) as count FROM medicines');
-    const count = existing[0].count;
+    const { rows: existing } = await connection.query('SELECT COUNT(*) as count FROM medicines');
+    const count = Number(existing[0].count);
 
     if (count > 0) {
       console.log(`⚠️  Warning: ${count} medicines already exist in the database.`);
@@ -39,13 +39,13 @@ const seedMedicines = async () => {
 
     // Execute the SQL statement directly
     try {
-      const [result] = await connection.query(cleanedSQL);
-      const totalRows = result.affectedRows || 0;
+      const result = await connection.query(cleanedSQL);
+      const totalRows = result.rowCount || 0;
       console.log(`✅ Successfully inserted ${totalRows} medicine record(s)`);
     } catch (error) {
       // If duplicate entry error, the table might already have some data
       // This is okay - just report it
-      if (error.code === 'ER_DUP_ENTRY' || error.code === 'ER_DUP_KEY') {
+      if (error.code === '23505') {
         console.log('⚠️  Some medicines already exist in the database.');
         console.log('   This is normal if you\'ve run the seed before.');
       } else {
@@ -58,10 +58,10 @@ const seedMedicines = async () => {
     connection.release();
 
     // Show final count
-    const [final] = await pool.query('SELECT COUNT(*) as count FROM medicines');
+    const { rows: final } = await pool.query('SELECT COUNT(*) as count FROM medicines');
     console.log(`\n📊 Total medicines in database: ${final[0].count}`);
 
-    if (final[0].count === 0) {
+    if (Number(final[0].count) === 0) {
       console.log('\n⚠️  No medicines found! The INSERT statement may have failed.');
       console.log('   Check the error message above for details.');
     } else {
@@ -75,8 +75,8 @@ const seedMedicines = async () => {
       console.error(`   Error code: ${error.code}`);
     }
     console.error('\n💡 Make sure:');
-    console.error('   1. MySQL server is running');
-    console.error('   2. Database "online_medical_store" exists');
+    console.error('   1. Your Postgres/Neon database is reachable');
+    console.error('   2. DATABASE_URL points at the correct database');
     console.error('   3. Database credentials in .env are correct');
     console.error('   4. Schema has been created (run database/schema.sql first)');
     process.exit(1);

@@ -12,14 +12,8 @@ export const env = {
   appName: process.env.APP_NAME || 'Online Medical Store API',
   nodeEnv: process.env.NODE_ENV || 'development',
   
-  // Database Configuration
-  db: {
-    host: process.env.DB_HOST || 'localhost',
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'online_medical_store'
-  },
+  // Database Configuration (PostgreSQL — e.g. Neon serverless Postgres)
+  databaseUrl: process.env.DATABASE_URL || '',
   
   // JWT Configuration
   jwt: {

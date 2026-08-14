@@ -3,8 +3,8 @@ import { getPool } from '../config/database.js';
 export const findMedicinesByIds = async (ids) => {
   if (!ids.length) return [];
 
-  const placeholders = ids.map(() => '?').join(',');
-  const [rows] = await getPool().query(
+  const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
+  const { rows } = await getPool().query(
     `SELECT m.*, s.name AS supplier_name
      FROM medicines m
      LEFT JOIN suppliers s ON s.id = m.supplier_id
@@ -19,8 +19,8 @@ export const decrementMedicineStock = async (connection, items) => {
   for (const item of items) {
     await connection.query(
       `UPDATE medicines
-       SET stock = stock - ?
-       WHERE id = ?`,
+       SET stock = stock - $1
+       WHERE id = $2`,
       [item.quantity, item.medicineId]
     );
   }
@@ -29,19 +29,19 @@ export const decrementMedicineStock = async (connection, items) => {
 export const adjustMedicineStock = async (id, delta) => {
   await getPool().query(
     `UPDATE medicines
-     SET stock = GREATEST(stock + ?, 0),
+     SET stock = GREATEST(stock + $1, 0),
          updated_at = NOW()
-     WHERE id = ?`,
+     WHERE id = $2`,
     [delta, id]
   );
 };
 
 export const getMedicineById = async (id) => {
-  const [rows] = await getPool().query(
+  const { rows } = await getPool().query(
     `SELECT m.*, s.name AS supplier_name
      FROM medicines m
      LEFT JOIN suppliers s ON s.id = m.supplier_id
-     WHERE m.id = ?`,
+     WHERE m.id = $1`,
     [id]
   );
 
@@ -53,13 +53,13 @@ export const listMedicines = async ({ search, category, limit }) => {
   const params = [];
 
   if (search) {
-    conditions.push('(m.name LIKE ? OR m.description LIKE ?)');
     params.push(`%${search}%`, `%${search}%`);
+    conditions.push(`(m.name ILIKE $${params.length - 1} OR m.description ILIKE $${params.length})`);
   }
 
   if (category) {
-    conditions.push('m.category = ?');
     params.push(category);
+    conditions.push(`m.category = $${params.length}`);
   }
 
   let query = `SELECT m.*, s.name AS supplier_name, m.manufacturer
@@ -72,11 +72,11 @@ export const listMedicines = async ({ search, category, limit }) => {
   query += ' ORDER BY m.sort_order ASC, m.created_at DESC';
 
   if (limit) {
-    query += ' LIMIT ?';
     params.push(Number(limit));
+    query += ` LIMIT $${params.length}`;
   }
 
-  const [rows] = await getPool().query(query, params);
+  const { rows } = await getPool().query(query, params);
   return rows;
 };
 
@@ -96,19 +96,20 @@ export const createMedicine = async ({
   manufacturer,
   interactionNotes
 }) => {
-  const [maxOrderResult] = await getPool().query('SELECT IFNULL(MAX(sort_order), 0) AS maxOrder FROM medicines');
-  const nextOrder = maxOrderResult[0].maxOrder + 1;
+  const maxOrderResult = await getPool().query('SELECT COALESCE(MAX(sort_order), 0) AS max_order FROM medicines');
+  const nextOrder = maxOrderResult.rows[0].max_order + 1;
 
-  const [result] = await getPool().query(
+  const { rows } = await getPool().query(
     `INSERT INTO medicines
       (name, description, price, stock, requires_prescription, image_url, manufacturer, category, expiry_date, manufacturing_date, supplier_id, dosage_instructions, side_effects, interactions, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+     RETURNING id`,
     [
       name,
       description || null,
       price,
       stock ?? 0,
-      requiresPrescription ? 1 : 0,
+      Boolean(requiresPrescription),
       imageUrl || null,
       manufacturer || null,
       category || null,
@@ -122,7 +123,7 @@ export const createMedicine = async ({
     ]
   );
 
-  return result.insertId;
+  return rows[0].id;
 };
 
 export const updateMedicine = async (
@@ -146,28 +147,28 @@ export const updateMedicine = async (
 ) => {
   await getPool().query(
     `UPDATE medicines
-     SET name = ?,
-         description = ?,
-         price = ?,
-         stock = ?,
-         requires_prescription = ?,
-         image_url = ?,
-         manufacturer = ?,
-         category = ?,
-         expiry_date = ?,
-         manufacturing_date = ?,
-         supplier_id = ?,
-         dosage_instructions = ?,
-         side_effects = ?,
-         interactions = ?,
+     SET name = $1,
+         description = $2,
+         price = $3,
+         stock = $4,
+         requires_prescription = $5,
+         image_url = $6,
+         manufacturer = $7,
+         category = $8,
+         expiry_date = $9,
+         manufacturing_date = $10,
+         supplier_id = $11,
+         dosage_instructions = $12,
+         side_effects = $13,
+         interactions = $14,
          updated_at = NOW()
-     WHERE id = ?`,
+     WHERE id = $15`,
     [
       name,
       description || null,
       price,
       stock ?? 0,
-      requiresPrescription ? 1 : 0,
+      Boolean(requiresPrescription),
       imageUrl || null,
       manufacturer || null,
       category || null,
@@ -184,30 +185,30 @@ export const updateMedicine = async (
 
 export const deleteMedicine = async (id) => {
   const pool = getPool();
-  const connection = await pool.getConnection();
+  const connection = await pool.connect();
 
   try {
-    await connection.beginTransaction();
+    await connection.query('BEGIN');
 
     // Get the sort_order of the medicine being deleted
-    const [medicine] = await connection.query('SELECT sort_order FROM medicines WHERE id = ?', [id]);
+    const { rows: medicine } = await connection.query('SELECT sort_order FROM medicines WHERE id = $1', [id]);
 
     if (medicine && medicine.length > 0) {
       const deletedOrder = medicine[0].sort_order;
 
       // Delete the medicine
-      await connection.query('DELETE FROM medicines WHERE id = ?', [id]);
+      await connection.query('DELETE FROM medicines WHERE id = $1', [id]);
 
       // Shift back all products after this specific position
       await connection.query(
-        'UPDATE medicines SET sort_order = sort_order - 1 WHERE sort_order > ?',
+        'UPDATE medicines SET sort_order = sort_order - 1 WHERE sort_order > $1',
         [deletedOrder]
       );
     }
 
-    await connection.commit();
+    await connection.query('COMMIT');
   } catch (error) {
-    await connection.rollback();
+    await connection.query('ROLLBACK');
     throw error;
   } finally {
     connection.release();
@@ -215,11 +216,11 @@ export const deleteMedicine = async (id) => {
 };
 
 export const findLowStockMedicines = async (threshold = 10) => {
-  const [rows] = await getPool().query(
+  const { rows } = await getPool().query(
     `SELECT m.*, s.name AS supplier_name
      FROM medicines m
      LEFT JOIN suppliers s ON s.id = m.supplier_id
-     WHERE m.stock <= ?
+     WHERE m.stock <= $1
      ORDER BY m.stock ASC`,
     [threshold]
   );
@@ -228,16 +229,15 @@ export const findLowStockMedicines = async (threshold = 10) => {
 };
 
 export const findExpiringMedicines = async (days = 30) => {
-  const [rows] = await getPool().query(
+  const { rows } = await getPool().query(
     `SELECT m.*, s.name AS supplier_name
      FROM medicines m
      LEFT JOIN suppliers s ON s.id = m.supplier_id
      WHERE m.expiry_date IS NOT NULL
-       AND m.expiry_date <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
+       AND m.expiry_date <= CURRENT_DATE + ($1 * INTERVAL '1 day')
      ORDER BY m.expiry_date ASC`,
     [days]
   );
 
   return rows;
 };
-

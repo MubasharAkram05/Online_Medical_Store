@@ -124,8 +124,8 @@ export const checkout = async (req, res, next) => {
       if (!orderPrescriptionId) {
         prescriptionIssues.push('A prescription is required for this order.');
       } else {
-        const [prescriptions] = await getPool().query(
-          `SELECT id, status, medicine_id FROM prescriptions WHERE id = ? AND user_id = ?`,
+        const { rows: prescriptions } = await getPool().query(
+          `SELECT id, status, medicine_id FROM prescriptions WHERE id = $1 AND user_id = $2`,
           [orderPrescriptionId, req.user.id]
         );
 
@@ -207,9 +207,9 @@ export const checkout = async (req, res, next) => {
     const shipping = SHIPPING_FEE;
     const total = Number((subtotal + tax + shipping).toFixed(2));
 
-    const connection = await getPool().getConnection();
+    const connection = await getPool().connect();
     try {
-      await connection.beginTransaction();
+      await connection.query('BEGIN');
 
       const orderId = await createOrder(connection, {
         userId: req.user.id,
@@ -255,7 +255,7 @@ export const checkout = async (req, res, next) => {
         capturedAt
       });
 
-      await connection.commit();
+      await connection.query('COMMIT');
 
       const { order, items: orderItemRows, payment } = await getOrderWithItems(req.user.id, orderId);
 
@@ -265,7 +265,7 @@ export const checkout = async (req, res, next) => {
         warnings: interactionWarnings
       });
     } catch (error) {
-      await connection.rollback();
+      await connection.query('ROLLBACK');
       if (!error.status) {
         error.status = 500;
       }

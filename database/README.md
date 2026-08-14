@@ -1,17 +1,19 @@
 # Database Setup
 
+This project uses PostgreSQL (e.g. [Neon](https://neon.tech) serverless Postgres).
+
 ## Create Database
-```sql
-CREATE DATABASE IF NOT EXISTS online_medical_store CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE online_medical_store;
-SOURCE schema.sql;
+Create the database via your Postgres provider's dashboard/CLI (e.g. the Neon console), then load the schema:
+
+```bash
+psql "$DATABASE_URL" -f schema.sql
 ```
 
 ## Seed Default Catalogue
 After the schema exists, load the starter products that power the `/medicines` page:
 
 ```bash
-mysql -u <user> -p<password> online_medical_store < database/seeds/medicines_seed.sql
+psql "$DATABASE_URL" -f database/seeds/medicines_seed.sql
 ```
 
 > Re-running the seed on a database that already contains rows will attempt to insert duplicates. Clean the table (or remove specific rows) first if necessary.
@@ -28,7 +30,7 @@ mysql -u <user> -p<password> online_medical_store < database/seeds/medicines_see
 
 ## Medicines
 - Each product tracks price, stock, category, and whether it requires a prescription
-- `requires_prescription = 1` forces verification during checkout
+- `requires_prescription = true` forces verification during checkout
 - Additional clinical data:
   - `dosage_instructions` for recommended usage
   - `side_effects` for common adverse reactions
@@ -44,13 +46,13 @@ mysql -u <user> -p<password> online_medical_store < database/seeds/medicines_see
 - From November 2025 onward, `orders.priority` tracks urgency (`normal`, `high`, `urgent`). If your database predates this column, run:
   ```sql
   ALTER TABLE orders
-    ADD COLUMN priority ENUM('normal', 'high', 'urgent') DEFAULT 'normal' AFTER status;
+    ADD COLUMN priority TEXT DEFAULT 'normal' CHECK (priority IN ('normal', 'high', 'urgent'));
   ```
 - If your database predates prescription-gated order status support, run:
   ```sql
-  ALTER TABLE orders
-    MODIFY COLUMN status ENUM('pending', 'pending_prescription', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled')
-    DEFAULT 'pending';
+  ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
+  ALTER TABLE orders ADD CONSTRAINT orders_status_check
+    CHECK (status IN ('pending', 'pending_prescription', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'));
   ```
 
 ## Payments

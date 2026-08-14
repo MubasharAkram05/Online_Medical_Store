@@ -3,11 +3,11 @@ import { getPool } from './src/config/database.js';
 async function findDuplicates() {
     const pool = getPool();
     try {
-        const [rows] = await pool.query(`
+        const { rows } = await pool.query(`
       SELECT name, manufacturer, COUNT(*) as count, MIN(id) as keep_id
       FROM medicines
       GROUP BY name, manufacturer
-      HAVING count > 1
+      HAVING COUNT(*) > 1
     `);
 
         console.log('Duplicate products found:');

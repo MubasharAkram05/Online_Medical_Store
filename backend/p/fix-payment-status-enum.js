@@ -1,23 +1,30 @@
-import mysql from 'mysql2/promise';
+import pg from 'pg';
 
-const config = {
-  host: 'localhost',
-  port: 3306,
-  user: 'root',
-  password: '',
-  database: 'online_medical_store'
-};
+const { Client } = pg;
 
 async function run() {
-  const conn = await mysql.createConnection(config);
-  console.log('Altering enum...');
-  await conn.query("ALTER TABLE payments MODIFY status ENUM('pending','completed','failed','refunded','rejected') DEFAULT 'pending'");
-  const [cols] = await conn.query("SHOW COLUMNS FROM payments LIKE 'status'");
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
+  await client.connect();
+  console.log('Altering status constraint...');
+  await client.query('ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_status_check');
+  await client.query(
+    `ALTER TABLE payments ADD CONSTRAINT payments_status_check
+     CHECK (status IN ('pending','completed','failed','refunded','rejected'))`
+  );
+  await client.query("ALTER TABLE payments ALTER COLUMN status SET DEFAULT 'pending'");
+  const { rows: cols } = await client.query(
+    `SELECT column_name, data_type, column_default
+     FROM information_schema.columns
+     WHERE table_name = 'payments' AND column_name = 'status'`
+  );
   console.log('Column', cols);
-  await conn.query('UPDATE payments SET status = ? WHERE id = ?', ['rejected', 43]);
-  const [row] = await conn.query('SELECT id,status FROM payments WHERE id = ?', [43]);
+  await client.query('UPDATE payments SET status = $1 WHERE id = $2', ['rejected', 43]);
+  const { rows: row } = await client.query('SELECT id,status FROM payments WHERE id = $1', [43]);
   console.log('Row after update', row);
-  await conn.end();
+  await client.end();
 }
 
-run().catch(err => { console.error(err); process.exit(1);} );
+run().catch(err => { console.error(err); process.exit(1); });
