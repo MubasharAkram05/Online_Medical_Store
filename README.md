@@ -133,3 +133,5 @@ Before sharing/submitting ZIP:
 ## License
 
 This project is built for academic/final-year project submission.
+# Deploy
+Deployed successfully on Vercel.
