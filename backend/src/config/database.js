@@ -16,7 +16,8 @@ export const getPool = () => {
       queueLimit: 0,
       ssl: {
         rejectUnauthorized: false
-      }
+      },
+      connectTimeout: 10000
     });
   }
 
@@ -28,4 +29,3 @@ export const testConnection = async () => {
   await connection.ping();
   connection.release();
 };
-
