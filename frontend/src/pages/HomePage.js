@@ -8,36 +8,94 @@ import { CATEGORIES } from '../utils/constants';
 import './HomePage.css';
 
 /**
- * useAutoScrollRow — continuous right-to-left auto-scroll for a horizontal
- * row. Only visibly active on mobile, where the target becomes a scrollable
- * single-row flex container (see HomePage.css); on desktop those containers
- * have no overflow, so this is a harmless no-op.
+ * useMarqueeScroll — frame-by-frame right-to-left auto-scroll that never
+ * pauses (unlike interval-based scrolling, which visibly steps and stops
+ * between jumps). The row's content must be rendered twice back-to-back
+ * (see the `[0, 1].map(...)` usage below); once scrollLeft passes the
+ * midpoint (end of the first copy) it wraps back by exactly that width,
+ * which is invisible since the second copy is identical to the first.
+ * Pauses on hover/touch and respects prefers-reduced-motion.
  */
-const useAutoScrollRow = (intervalMs = 3000) => {
+const useMarqueeScroll = (speedPxPerSec = 40) => {
   const ref = useRef(null);
+  const pausedRef = useRef(false);
+  // Tracked separately from el.scrollLeft, which the browser rounds to a
+  // whole pixel on every write — reading it back to compute the next step
+  // would silently drop any sub-pixel-per-frame speed (it always rounds
+  // back down to the same integer, so the row never appears to move).
+  const positionRef = useRef(null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return undefined;
+
+    let rafId;
+    let lastTs = null;
+
+    const step = (ts) => {
       const el = ref.current;
-      if (!el) return;
+      if (el) {
+        if (lastTs === null) lastTs = ts;
+        const dt = ts - lastTs;
+        lastTs = ts;
 
-      const maxScroll = el.scrollWidth - el.clientWidth;
-      if (maxScroll <= 0) return;
-
-      if (el.scrollLeft >= maxScroll - 5) {
-        el.scrollTo({ left: 0, behavior: 'smooth' });
+        if (!pausedRef.current) {
+          const halfWidth = el.scrollWidth / 2;
+          if (halfWidth > el.clientWidth) {
+            if (positionRef.current === null) positionRef.current = el.scrollLeft;
+            let next = positionRef.current + (speedPxPerSec * dt) / 1000;
+            if (next >= halfWidth) next -= halfWidth;
+            if (next < 0) next += halfWidth;
+            positionRef.current = next;
+            el.scrollLeft = next;
+          }
+        }
       } else {
-        const card = el.firstElementChild;
-        const step = card ? card.getBoundingClientRect().width + 16 : el.clientWidth * 0.8;
-        el.scrollBy({ left: step, behavior: 'smooth' });
+        lastTs = null;
+        positionRef.current = null;
       }
-    }, intervalMs);
+      rafId = requestAnimationFrame(step);
+    };
 
-    return () => clearInterval(interval);
-  }, [intervalMs]);
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [speedPxPerSec]);
 
-  return ref;
+  const pause = () => { pausedRef.current = true; };
+  const resume = () => { pausedRef.current = false; };
+  // Lets an arrow button nudge the row without the auto-scroll loop
+  // overwriting the jump on the very next frame — it mutates the same
+  // positionRef the loop reads from, instead of touching el.scrollLeft
+  // directly (which the loop doesn't know about).
+  const nudge = (deltaPx) => {
+    const el = ref.current;
+    if (!el) return;
+    const halfWidth = el.scrollWidth / 2;
+    let base = positionRef.current === null ? el.scrollLeft : positionRef.current;
+    let next = base + deltaPx;
+    if (halfWidth > 0) {
+      next = ((next % halfWidth) + halfWidth) % halfWidth;
+    }
+    positionRef.current = next;
+    el.scrollLeft = next;
+  };
+
+  return { ref, pause, resume, nudge };
 };
+
+const HERO_FEATURES = [
+  { icon: '✓', label: 'Authentic Medicines' },
+  { icon: '🚚', label: 'Fast Delivery' },
+  { icon: '💊', label: 'Prescription Support' },
+  { icon: '🎧', label: '24/7 Support' },
+];
+
+const WHY_CHOOSE_FEATURES = [
+  { icon: '💊', title: 'Authentic Products', text: '100% genuine medicines from licensed suppliers' },
+  { icon: '🚚', title: 'Fast Delivery', text: 'Quick and reliable delivery to your doorstep' },
+  { icon: '👨‍⚕️', title: 'Expert Support', text: '24/7 customer support from healthcare experts' },
+  { icon: '💰', title: 'Best Prices', text: 'Competitive prices on all healthcare products' },
+];
 
 const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
@@ -67,16 +125,16 @@ const HomePage = () => {
     fetchFeaturedProducts();
   }, []);
 
-  const heroFeaturesRef = useAutoScrollRow(2500);
-  const featuresScrollRef = useAutoScrollRow(3000);
-  const categoriesScrollRef = useAutoScrollRow(2800);
+  const heroFeatures = useMarqueeScroll(30);
+  const whyChooseFeatures = useMarqueeScroll(25);
+  const categories = useMarqueeScroll(20);
 
   const scrollCategories = (direction) => {
-    const el = categoriesScrollRef.current;
+    const el = categories.ref.current;
     if (!el) return;
     const card = el.firstElementChild;
     const step = card ? card.getBoundingClientRect().width + 16 : el.clientWidth * 0.5;
-    el.scrollBy({ left: direction * step, behavior: 'smooth' });
+    categories.nudge(direction * step);
   };
 
   const getCategoryEmoji = (categoryName) => {
@@ -112,23 +170,24 @@ const HomePage = () => {
               <Button variant="primary" size="large">Browse Products</Button>
             </Link>
           </div>
-          <div className="hero-features" ref={heroFeaturesRef}>
-            <div className="feature-item">
-              <span className="feature-icon">✓</span>
-              <span>Authentic Medicines</span>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">🚚</span>
-              <span>Fast Delivery</span>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">💊</span>
-              <span>Prescription Support</span>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">🎧</span>
-              <span>24/7 Support</span>
-            </div>
+          <div
+            className="hero-features"
+            ref={heroFeatures.ref}
+            onMouseEnter={heroFeatures.pause}
+            onMouseLeave={heroFeatures.resume}
+            onTouchStart={heroFeatures.pause}
+            onTouchEnd={heroFeatures.resume}
+          >
+            {[0, 1].map((copy) => (
+              <React.Fragment key={copy}>
+                {HERO_FEATURES.map((feature) => (
+                  <div className="feature-item" key={`${copy}-${feature.label}`}>
+                    <span className="feature-icon">{feature.icon}</span>
+                    <span>{feature.label}</span>
+                  </div>
+                ))}
+              </React.Fragment>
+            ))}
           </div>
         </div>
       </section>
@@ -149,16 +208,27 @@ const HomePage = () => {
             >
               ‹
             </button>
-            <div className="categories-grid" ref={categoriesScrollRef}>
-              {CATEGORIES.map((category) => (
-                <Link key={category.id} to={`/medicines?category=${encodeURIComponent(category.name)}`}>
-                  <Card className="category-card">
-                    <span className="category-emoji">{getCategoryEmoji(category.name)}</span>
-                    <div className="category-card-content">
-                      <h3 className="category-name">{category.name}</h3>
-                    </div>
-                  </Card>
-                </Link>
+            <div
+              className="categories-grid"
+              ref={categories.ref}
+              onMouseEnter={categories.pause}
+              onMouseLeave={categories.resume}
+              onTouchStart={categories.pause}
+              onTouchEnd={categories.resume}
+            >
+              {[0, 1].map((copy) => (
+                <React.Fragment key={copy}>
+                  {CATEGORIES.map((category) => (
+                    <Link key={`${copy}-${category.id}`} to={`/medicines?category=${encodeURIComponent(category.name)}`}>
+                      <Card className="category-card">
+                        <span className="category-emoji">{getCategoryEmoji(category.name)}</span>
+                        <div className="category-card-content">
+                          <h3 className="category-name">{category.name}</h3>
+                        </div>
+                      </Card>
+                    </Link>
+                  ))}
+                </React.Fragment>
               ))}
             </div>
             <button
@@ -207,27 +277,25 @@ const HomePage = () => {
           <div className="section-header">
             <h2 className="section-title">Why Choose Us?</h2>
           </div>
-          <div className="features-grid" ref={featuresScrollRef}>
-            <Card className="feature-card">
-              <div className="feature-icon-large">💊</div>
-              <h3 className="feature-title">Authentic Products</h3>
-              <p className="feature-text">100% genuine medicines from licensed suppliers</p>
-            </Card>
-            <Card className="feature-card">
-              <div className="feature-icon-large">🚚</div>
-              <h3 className="feature-title">Fast Delivery</h3>
-              <p className="feature-text">Quick and reliable delivery to your doorstep</p>
-            </Card>
-            <Card className="feature-card">
-              <div className="feature-icon-large">👨‍⚕️</div>
-              <h3 className="feature-title">Expert Support</h3>
-              <p className="feature-text">24/7 customer support from healthcare experts</p>
-            </Card>
-            <Card className="feature-card">
-              <div className="feature-icon-large">💰</div>
-              <h3 className="feature-title">Best Prices</h3>
-              <p className="feature-text">Competitive prices on all healthcare products</p>
-            </Card>
+          <div
+            className="features-grid"
+            ref={whyChooseFeatures.ref}
+            onMouseEnter={whyChooseFeatures.pause}
+            onMouseLeave={whyChooseFeatures.resume}
+            onTouchStart={whyChooseFeatures.pause}
+            onTouchEnd={whyChooseFeatures.resume}
+          >
+            {[0, 1].map((copy) => (
+              <React.Fragment key={copy}>
+                {WHY_CHOOSE_FEATURES.map((feature) => (
+                  <Card className="feature-card" key={`${copy}-${feature.title}`}>
+                    <div className="feature-icon-large">{feature.icon}</div>
+                    <h3 className="feature-title">{feature.title}</h3>
+                    <p className="feature-text">{feature.text}</p>
+                  </Card>
+                ))}
+              </React.Fragment>
+            ))}
           </div>
         </div>
       </section>
