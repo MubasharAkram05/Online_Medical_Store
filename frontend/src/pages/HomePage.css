@@ -105,19 +105,27 @@
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
 }
 
+.hero-cta-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  margin: 24px auto 28px;
+  flex-wrap: wrap;
+}
+
 .hero-buttons {
   display: flex;
   gap: 20px;
   justify-content: center;
-  margin: 24px auto 28px;
+  margin-left: 24px;
   flex-wrap: wrap;
-  max-width: 480px;
 }
 
 .hero-buttons .btn-primary {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(270deg, var(--primary-color), var(--primary-light), var(--primary-dark), var(--secondary-color), var(--primary-dark), var(--primary-light), var(--primary-color));
+  background: linear-gradient(270deg, var(--primary-color), #66BB6A, var(--primary-light), var(--primary-dark), var(--secondary-color), var(--primary-dark), #66BB6A, var(--primary-color));
   background-size: 250% 250%;
   color: var(--text-white);
   border: none;
@@ -186,18 +194,14 @@
 
 .hero-features {
   display: flex;
-  flex-wrap: nowrap;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 0;
-  max-width: 900px;
-  margin-left: auto;
-  margin-right: auto;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 210px;
 }
 
 .hero-features .feature-item {
-  flex: 1 1 0;
-  min-width: 0;
+  flex: none;
+  width: 100%;
 }
 
 .feature-item {
@@ -440,9 +444,15 @@
     font-size: 16px;
   }
 
+  .hero-cta-row {
+    flex-direction: column;
+    align-items: center;
+  }
+
   .hero-buttons {
     flex-direction: column;
     align-items: center;
+    margin-left: 0;
   }
 
   .hero-buttons .btn-primary {
