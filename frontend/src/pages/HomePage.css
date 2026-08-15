@@ -235,6 +235,14 @@
   background: var(--bg-light);
 }
 
+.features-carousel {
+  position: relative;
+}
+
+.carousel-arrow {
+  display: none;
+}
+
 .features-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -315,12 +323,61 @@
   }
   
   .categories-grid,
-  .products-grid,
-  .features-grid {
+  .products-grid {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
   }
-  
+
+  .features-carousel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .carousel-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--primary-color);
+    color: var(--text-white);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 2;
+  }
+
+  .carousel-arrow:hover {
+    background: var(--primary-dark);
+  }
+
+  .features-grid {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    gap: 16px;
+    flex: 1;
+    min-width: 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .features-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .feature-card {
+    scroll-snap-align: start;
+    flex: 0 0 78%;
+    padding: 28px 22px;
+  }
+
   .hero-features {
     grid-template-columns: 1fr;
     gap: 12px;
