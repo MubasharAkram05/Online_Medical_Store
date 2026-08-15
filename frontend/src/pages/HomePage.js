@@ -83,6 +83,84 @@ const useMarqueeScroll = (speedPxPerSec = 40) => {
   return { ref, pause, resume, nudge };
 };
 
+/**
+ * useBurstAutoScroll — like useMarqueeScroll, but automatically pauses for
+ * `burstPauseMs` after every `cardsPerBurst` cards' worth of distance has
+ * scrolled by, then resumes. An arrow-button nudge (via `nudge`) pauses for
+ * its own given duration instead, overriding any burst pause in progress.
+ */
+const useBurstAutoScroll = (speedPxPerSec, cardsPerBurst, burstPauseMs) => {
+  const ref = useRef(null);
+  const hoverPausedRef = useRef(false);
+  const pausedUntilRef = useRef(0);
+  const positionRef = useRef(null);
+  const distanceRef = useRef(0);
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return undefined;
+
+    let rafId;
+    let lastTs = null;
+
+    const step = (ts) => {
+      const el = ref.current;
+      if (el) {
+        if (lastTs === null) lastTs = ts;
+        const dt = ts - lastTs;
+        lastTs = ts;
+
+        if (!hoverPausedRef.current && ts >= pausedUntilRef.current) {
+          const halfWidth = el.scrollWidth / 2;
+          if (halfWidth > el.clientWidth) {
+            if (positionRef.current === null) positionRef.current = el.scrollLeft;
+            const delta = (speedPxPerSec * dt) / 1000;
+            let next = positionRef.current + delta;
+            if (next >= halfWidth) next -= halfWidth;
+            if (next < 0) next += halfWidth;
+            positionRef.current = next;
+            el.scrollLeft = next;
+
+            const card = el.firstElementChild;
+            const cardStep = card ? card.getBoundingClientRect().width + 16 : el.clientWidth * 0.5;
+            distanceRef.current += delta;
+            if (distanceRef.current >= cardStep * cardsPerBurst) {
+              distanceRef.current = 0;
+              pausedUntilRef.current = ts + burstPauseMs;
+            }
+          }
+        }
+      } else {
+        lastTs = null;
+        positionRef.current = null;
+      }
+      rafId = requestAnimationFrame(step);
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [speedPxPerSec, cardsPerBurst, burstPauseMs]);
+
+  const pause = () => { hoverPausedRef.current = true; };
+  const resume = () => { hoverPausedRef.current = false; };
+  const nudge = (deltaPx, pauseMs) => {
+    const el = ref.current;
+    if (!el) return;
+    const halfWidth = el.scrollWidth / 2;
+    let base = positionRef.current === null ? el.scrollLeft : positionRef.current;
+    let next = base + deltaPx;
+    if (halfWidth > 0) {
+      next = ((next % halfWidth) + halfWidth) % halfWidth;
+    }
+    positionRef.current = next;
+    el.scrollLeft = next;
+    distanceRef.current = 0;
+    if (pauseMs) pausedUntilRef.current = performance.now() + pauseMs;
+  };
+
+  return { ref, pause, resume, nudge };
+};
+
 const HERO_FEATURES = [
   { icon: '✓', label: 'Authentic Medicines' },
   { icon: '🚚', label: 'Fast Delivery' },
@@ -126,14 +204,14 @@ const HomePage = () => {
   }, []);
 
   const whyChooseFeatures = useMarqueeScroll(25);
-  const categories = useMarqueeScroll(20);
+  const categories = useBurstAutoScroll(20, 3, 3000);
 
   const scrollCategories = (direction) => {
     const el = categories.ref.current;
     if (!el) return;
     const card = el.firstElementChild;
     const step = card ? card.getBoundingClientRect().width + 16 : el.clientWidth * 0.5;
-    categories.nudge(direction * step);
+    categories.nudge(direction * step, 5000);
   };
 
   const getCategoryEmoji = (categoryName) => {
