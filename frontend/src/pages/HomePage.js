@@ -100,10 +100,7 @@ const HomePage = () => {
           </p>
           <div className="hero-buttons">
             <Link to="/medicines">
-              <Button variant="primary" size="large">Shop Now</Button>
-            </Link>
-            <Link to="/medicines">
-              <Button variant="outline" size="large">Browse Products</Button>
+              <Button variant="primary" size="large">Browse Products</Button>
             </Link>
           </div>
           <div className="hero-features" ref={heroFeaturesRef}>
