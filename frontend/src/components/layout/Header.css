@@ -6,17 +6,37 @@
   font-size: 13px;
 }
 
-.top-header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
+.top-header-marquee {
+  overflow: hidden;
+  width: 100%;
 }
 
-.top-header-left {
+.top-header-track {
   display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
+  align-items: center;
+  width: max-content;
+  gap: 48px;
+  padding-right: 48px;
+  animation: top-header-marquee 20s linear infinite;
+}
+
+.top-header-marquee:hover .top-header-track {
+  animation-play-state: paused;
+}
+
+@keyframes top-header-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top-header-track {
+    animation: none;
+  }
 }
 
 .contact-info,
@@ -26,6 +46,8 @@
   gap: 6px;
   color: #e6fffb;
   font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .top-header .icon {
@@ -283,11 +305,6 @@
 }
 
 @media (max-width: 640px) {
-  .top-header-content {
-    flex-direction: column;
-    text-align: center;
-  }
-
   .nav-links {
     gap: 12px;
   }

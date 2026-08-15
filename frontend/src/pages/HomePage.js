@@ -69,6 +69,15 @@ const HomePage = () => {
 
   const heroFeaturesRef = useAutoScrollRow(2500);
   const featuresScrollRef = useAutoScrollRow(3000);
+  const categoriesScrollRef = useAutoScrollRow(2800);
+
+  const scrollCategories = (direction) => {
+    const el = categoriesScrollRef.current;
+    if (!el) return;
+    const card = el.firstElementChild;
+    const step = card ? card.getBoundingClientRect().width + 16 : el.clientWidth * 0.5;
+    el.scrollBy({ left: direction * step, behavior: 'smooth' });
+  };
 
   const getCategoryEmoji = (categoryName) => {
     switch (categoryName) {
@@ -131,17 +140,35 @@ const HomePage = () => {
             <h2 className="section-title">Shop by Category</h2>
             <p className="section-subtitle">Browse our wide range of healthcare products</p>
           </div>
-          <div className="categories-grid">
-            {CATEGORIES.map((category) => (
-              <Link key={category.id} to={`/medicines?category=${encodeURIComponent(category.name)}`}>
-                <Card className="category-card">
-                  <span className="category-emoji">{getCategoryEmoji(category.name)}</span>
-                  <div className="category-card-content">
-                    <h3 className="category-name">{category.name}</h3>
-                  </div>
-                </Card>
-              </Link>
-            ))}
+          <div className="categories-carousel">
+            <button
+              type="button"
+              className="carousel-arrow carousel-arrow-left"
+              onClick={() => scrollCategories(-1)}
+              aria-label="Previous category"
+            >
+              ‹
+            </button>
+            <div className="categories-grid" ref={categoriesScrollRef}>
+              {CATEGORIES.map((category) => (
+                <Link key={category.id} to={`/medicines?category=${encodeURIComponent(category.name)}`}>
+                  <Card className="category-card">
+                    <span className="category-emoji">{getCategoryEmoji(category.name)}</span>
+                    <div className="category-card-content">
+                      <h3 className="category-name">{category.name}</h3>
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="carousel-arrow carousel-arrow-right"
+              onClick={() => scrollCategories(1)}
+              aria-label="Next category"
+            >
+              ›
+            </button>
           </div>
         </div>
       </section>

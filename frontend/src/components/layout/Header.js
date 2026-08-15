@@ -63,25 +63,28 @@ const Header = () => {
 
   return (
     <>
-      {/* Top Header Bar */}
+      {/* Top Header Bar — continuous right-to-left marquee, never pauses.
+          Content is duplicated so the track can loop seamlessly: at
+          translateX(-50%) the second copy lines up exactly where the first
+          started, so the animation restarts with no visible jump. */}
       <div className="top-header">
-        <div className="container">
-          <div className="top-header-content">
-            <div className="top-header-left">
-              <span className="contact-info">
-                <i className="icon">📞</i>
-                Call Us: +92 300 1234567
-              </span>
-              <span className="contact-info">
-                <i className="icon">✉️</i>
-                Email: info@medicalstore.com
-              </span>
-            </div>
-            <div className="top-header-right">
-              <span className="promo-text">
-                <i className="icon">🚚</i> Free Delivery on orders over Rs. 5000
-              </span>
-            </div>
+        <div className="top-header-marquee">
+          <div className="top-header-track">
+            {[0, 1].map((copy) => (
+              <React.Fragment key={copy}>
+                <span className="contact-info">
+                  <i className="icon">📞</i>
+                  Call Us: +92 300 1234567
+                </span>
+                <span className="contact-info">
+                  <i className="icon">✉️</i>
+                  Email: info@medicalstore.com
+                </span>
+                <span className="promo-text">
+                  <i className="icon">🚚</i> Free Delivery on orders over Rs. 5000
+                </span>
+              </React.Fragment>
+            ))}
           </div>
         </div>
       </div>
