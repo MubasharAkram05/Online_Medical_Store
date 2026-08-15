@@ -62,7 +62,11 @@ const useMarqueeScroll = (speedPxPerSec = 40) => {
   }, [speedPxPerSec]);
 
   const pause = () => { pausedRef.current = true; };
-  const resume = () => { pausedRef.current = false; };
+  // Dropping positionRef back to null makes the loop re-sync from the
+  // real el.scrollLeft on the next frame, instead of resuming from a
+  // stale value — otherwise a manual touch/drag scroll during the pause
+  // gets silently overwritten the instant auto-scroll resumes.
+  const resume = () => { pausedRef.current = false; positionRef.current = null; };
   // Lets an arrow button nudge the row without the auto-scroll loop
   // overwriting the jump on the very next frame — it mutates the same
   // positionRef the loop reads from, instead of touching el.scrollLeft
@@ -88,8 +92,12 @@ const useMarqueeScroll = (speedPxPerSec = 40) => {
  * `burstPauseMs` after every `cardsPerBurst` cards' worth of distance has
  * scrolled by, then resumes. An arrow-button nudge (via `nudge`) pauses for
  * its own given duration instead, overriding any burst pause in progress.
+ * When a full pass through the row completes, it snaps back to the very
+ * first card and pauses for `endPauseMs` — a longer, distinct stop so it
+ * reads as "this category set just finished and is starting over", not
+ * just another burst pause.
  */
-const useBurstAutoScroll = (speedPxPerSec, cardsPerBurst, burstPauseMs) => {
+const useBurstAutoScroll = (speedPxPerSec, cardsPerBurst, burstPauseMs, endPauseMs) => {
   const ref = useRef(null);
   const hoverPausedRef = useRef(false);
   const pausedUntilRef = useRef(0);
@@ -116,18 +124,26 @@ const useBurstAutoScroll = (speedPxPerSec, cardsPerBurst, burstPauseMs) => {
             if (positionRef.current === null) positionRef.current = el.scrollLeft;
             const delta = (speedPxPerSec * dt) / 1000;
             let next = positionRef.current + delta;
-            if (next >= halfWidth) next -= halfWidth;
+
+            if (next >= halfWidth) {
+              // Full pass complete — stop dead at the first card instead
+              // of wrapping mid-scroll, then hold before restarting.
+              next = 0;
+              distanceRef.current = 0;
+              pausedUntilRef.current = ts + endPauseMs;
+            } else {
+              const card = el.firstElementChild;
+              const cardStep = card ? card.getBoundingClientRect().width + 16 : el.clientWidth * 0.5;
+              distanceRef.current += delta;
+              if (distanceRef.current >= cardStep * cardsPerBurst) {
+                distanceRef.current = 0;
+                pausedUntilRef.current = ts + burstPauseMs;
+              }
+            }
+
             if (next < 0) next += halfWidth;
             positionRef.current = next;
             el.scrollLeft = next;
-
-            const card = el.firstElementChild;
-            const cardStep = card ? card.getBoundingClientRect().width + 16 : el.clientWidth * 0.5;
-            distanceRef.current += delta;
-            if (distanceRef.current >= cardStep * cardsPerBurst) {
-              distanceRef.current = 0;
-              pausedUntilRef.current = ts + burstPauseMs;
-            }
           }
         }
       } else {
@@ -139,10 +155,12 @@ const useBurstAutoScroll = (speedPxPerSec, cardsPerBurst, burstPauseMs) => {
 
     rafId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafId);
-  }, [speedPxPerSec, cardsPerBurst, burstPauseMs]);
+  }, [speedPxPerSec, cardsPerBurst, burstPauseMs, endPauseMs]);
 
   const pause = () => { hoverPausedRef.current = true; };
-  const resume = () => { hoverPausedRef.current = false; };
+  // Re-sync from the real scroll position on resume (see useMarqueeScroll's
+  // resume for why) so a manual touch/drag during the pause isn't undone.
+  const resume = () => { hoverPausedRef.current = false; positionRef.current = null; };
   const nudge = (deltaPx, pauseMs) => {
     const el = ref.current;
     if (!el) return;
@@ -175,6 +193,13 @@ const WHY_CHOOSE_FEATURES = [
   { icon: '💰', title: 'Best Prices', text: 'Competitive prices on all healthcare products' },
 ];
 
+const HERO_BG_IMAGES = [
+  'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1200&h=800&fit=crop',
+  'https://images.unsplash.com/photo-1550572017-edd951b55104?w=1200&h=800&fit=crop',
+  'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=1200&h=800&fit=crop',
+  'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=1200&h=800&fit=crop',
+];
+
 const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -203,8 +228,17 @@ const HomePage = () => {
     fetchFeaturedProducts();
   }, []);
 
+  const [heroBgIndex, setHeroBgIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHeroBgIndex((i) => (i + 1) % HERO_BG_IMAGES.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
   const whyChooseFeatures = useMarqueeScroll(25);
-  const categories = useBurstAutoScroll(20, 3, 3000);
+  const categories = useBurstAutoScroll(20, 1, 3000, 3000);
 
   const scrollCategories = (direction) => {
     const el = categories.ref.current;
@@ -237,6 +271,19 @@ const HomePage = () => {
     <div className="homepage">
       {/* Hero Section */}
       <section className="hero-section">
+        <div className="hero-bg">
+          <div
+            key={heroBgIndex}
+            className="hero-bg-image"
+            style={{ backgroundImage: `url(${HERO_BG_IMAGES[heroBgIndex]})` }}
+          />
+          <div className="hero-bg-overlay" />
+          <div className="hero-bg-dots">
+            {HERO_BG_IMAGES.map((_, i) => (
+              <span key={i} className={`hero-bg-dot ${i === heroBgIndex ? 'active' : ''}`} />
+            ))}
+          </div>
+        </div>
         <div className="hero-content">
           <h1 className="hero-title">Your Health, Our Priority</h1>
           <p className="hero-subtitle">
