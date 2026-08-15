@@ -7,6 +7,38 @@ import MedicineCard from '../components/medicine/MedicineCard';
 import { CATEGORIES } from '../utils/constants';
 import './HomePage.css';
 
+/**
+ * useAutoScrollRow — continuous right-to-left auto-scroll for a horizontal
+ * row. Only visibly active on mobile, where the target becomes a scrollable
+ * single-row flex container (see HomePage.css); on desktop those containers
+ * have no overflow, so this is a harmless no-op.
+ */
+const useAutoScrollRow = (intervalMs = 3000) => {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const el = ref.current;
+      if (!el) return;
+
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (maxScroll <= 0) return;
+
+      if (el.scrollLeft >= maxScroll - 5) {
+        el.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        const card = el.firstElementChild;
+        const step = card ? card.getBoundingClientRect().width + 16 : el.clientWidth * 0.8;
+        el.scrollBy({ left: step, behavior: 'smooth' });
+      }
+    }, intervalMs);
+
+    return () => clearInterval(interval);
+  }, [intervalMs]);
+
+  return ref;
+};
+
 const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,38 +67,8 @@ const HomePage = () => {
     fetchFeaturedProducts();
   }, []);
 
-  // "Why Choose Us" horizontal carousel — only active on mobile, where
-  // .features-grid switches to a scrollable row (see HomePage.css). On
-  // desktop the grid layout has no overflow, so these are harmless no-ops.
-  const featuresScrollRef = useRef(null);
-
-  const scrollFeatures = (direction) => {
-    const el = featuresScrollRef.current;
-    if (!el) return;
-    const card = el.firstElementChild;
-    const step = card ? card.getBoundingClientRect().width + 16 : el.clientWidth * 0.8;
-    el.scrollBy({ left: direction * step, behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const el = featuresScrollRef.current;
-      if (!el) return;
-
-      const maxScroll = el.scrollWidth - el.clientWidth;
-      if (maxScroll <= 0) return;
-
-      if (el.scrollLeft >= maxScroll - 5) {
-        el.scrollTo({ left: 0, behavior: 'smooth' });
-      } else {
-        const card = el.firstElementChild;
-        const step = card ? card.getBoundingClientRect().width + 16 : el.clientWidth * 0.8;
-        el.scrollBy({ left: step, behavior: 'smooth' });
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const heroFeaturesRef = useAutoScrollRow(2500);
+  const featuresScrollRef = useAutoScrollRow(3000);
 
   const getCategoryEmoji = (categoryName) => {
     switch (categoryName) {
@@ -104,7 +106,7 @@ const HomePage = () => {
               <Button variant="outline" size="large">Browse Products</Button>
             </Link>
           </div>
-          <div className="hero-features">
+          <div className="hero-features" ref={heroFeaturesRef}>
             <div className="feature-item">
               <span className="feature-icon">✓</span>
               <span>Authentic Medicines</span>
@@ -181,45 +183,27 @@ const HomePage = () => {
           <div className="section-header">
             <h2 className="section-title">Why Choose Us?</h2>
           </div>
-          <div className="features-carousel">
-            <button
-              type="button"
-              className="carousel-arrow carousel-arrow-left"
-              onClick={() => scrollFeatures(-1)}
-              aria-label="Previous"
-            >
-              ‹
-            </button>
-            <div className="features-grid" ref={featuresScrollRef}>
-              <Card className="feature-card">
-                <div className="feature-icon-large">💊</div>
-                <h3 className="feature-title">Authentic Products</h3>
-                <p className="feature-text">100% genuine medicines from licensed suppliers</p>
-              </Card>
-              <Card className="feature-card">
-                <div className="feature-icon-large">🚚</div>
-                <h3 className="feature-title">Fast Delivery</h3>
-                <p className="feature-text">Quick and reliable delivery to your doorstep</p>
-              </Card>
-              <Card className="feature-card">
-                <div className="feature-icon-large">👨‍⚕️</div>
-                <h3 className="feature-title">Expert Support</h3>
-                <p className="feature-text">24/7 customer support from healthcare experts</p>
-              </Card>
-              <Card className="feature-card">
-                <div className="feature-icon-large">💰</div>
-                <h3 className="feature-title">Best Prices</h3>
-                <p className="feature-text">Competitive prices on all healthcare products</p>
-              </Card>
-            </div>
-            <button
-              type="button"
-              className="carousel-arrow carousel-arrow-right"
-              onClick={() => scrollFeatures(1)}
-              aria-label="Next"
-            >
-              ›
-            </button>
+          <div className="features-grid" ref={featuresScrollRef}>
+            <Card className="feature-card">
+              <div className="feature-icon-large">💊</div>
+              <h3 className="feature-title">Authentic Products</h3>
+              <p className="feature-text">100% genuine medicines from licensed suppliers</p>
+            </Card>
+            <Card className="feature-card">
+              <div className="feature-icon-large">🚚</div>
+              <h3 className="feature-title">Fast Delivery</h3>
+              <p className="feature-text">Quick and reliable delivery to your doorstep</p>
+            </Card>
+            <Card className="feature-card">
+              <div className="feature-icon-large">👨‍⚕️</div>
+              <h3 className="feature-title">Expert Support</h3>
+              <p className="feature-text">24/7 customer support from healthcare experts</p>
+            </Card>
+            <Card className="feature-card">
+              <div className="feature-icon-large">💰</div>
+              <h3 className="feature-title">Best Prices</h3>
+              <p className="feature-text">Competitive prices on all healthcare products</p>
+            </Card>
           </div>
         </div>
       </section>
