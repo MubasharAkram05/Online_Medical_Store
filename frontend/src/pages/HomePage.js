@@ -289,18 +289,20 @@ const HomePage = () => {
           <p className="hero-subtitle">
             Get authentic medicines delivered to your doorstep. Trusted by thousands of customers.
           </p>
-          <div className="hero-buttons">
-            <Link to="/medicines">
-              <Button variant="primary" size="large">Browse Products</Button>
-            </Link>
-          </div>
-          <div className="hero-features">
-            {HERO_FEATURES.map((feature) => (
-              <div className="feature-item" key={feature.label}>
-                <span className="feature-icon">{feature.icon}</span>
-                <span>{feature.label}</span>
-              </div>
-            ))}
+          <div className="hero-cta-row">
+            <div className="hero-features">
+              {HERO_FEATURES.map((feature) => (
+                <div className="feature-item" key={feature.label}>
+                  <span className="feature-icon">{feature.icon}</span>
+                  <span>{feature.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="hero-buttons">
+              <Link to="/medicines">
+                <Button variant="primary" size="large">Browse Products</Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
