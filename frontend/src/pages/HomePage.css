@@ -332,3 +332,29 @@
   }
 }
 
+@media (max-width: 480px) {
+  .categories-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .category-card {
+    padding: 14px 8px;
+  }
+
+  .category-emoji {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+
+  .category-name {
+    font-size: 13px;
+    margin-bottom: 0;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+

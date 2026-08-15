@@ -129,6 +129,35 @@
   font-weight: 500;
 }
 
+.medicine-rating-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -6px 0 12px;
+  font-size: 0.8rem;
+  color: #7f8c8d;
+}
+
+.medicine-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #f39c12;
+  font-weight: 700;
+}
+
+.medicine-rating .rating-count {
+  color: #95a5a6;
+  font-weight: 500;
+}
+
+.medicine-sold {
+  color: #95a5a6;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .add-to-cart-btn {
   width: 100%;
   margin-top: 0;
@@ -152,5 +181,60 @@
 
   .medicine-name {
     font-size: 1.05rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .medicine-card {
+    border-radius: 12px;
+  }
+
+  .medicine-info {
+    padding: 10px;
+  }
+
+  .medicine-name {
+    font-size: 0.85rem;
+    margin-bottom: 2px;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+
+  .medicine-manufacturer-card {
+    font-size: 0.65rem;
+    margin-bottom: 4px;
+  }
+
+  .medicine-description {
+    display: none;
+  }
+
+  .medicine-details {
+    margin-bottom: 6px;
+  }
+
+  .medicine-price {
+    font-size: 0.95rem;
+  }
+
+  .medicine-stock {
+    font-size: 0.7rem;
+  }
+
+  .medicine-rating-row {
+    margin: -2px 0 8px;
+    font-size: 0.7rem;
+  }
+
+  .prescription-badge {
+    top: 6px;
+    right: 6px;
+    padding: 3px 8px;
+    font-size: 0.6rem;
+  }
+
+  .add-to-cart-btn {
+    font-size: 0.8rem;
+    padding: 8px 10px;
   }
 }
