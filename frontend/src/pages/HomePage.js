@@ -179,13 +179,6 @@ const useBurstAutoScroll = (speedPxPerSec, cardsPerBurst, burstPauseMs, endPause
   return { ref, pause, resume, nudge };
 };
 
-const HERO_FEATURES = [
-  { icon: '✓', label: 'Authentic Medicines' },
-  { icon: '🚚', label: 'Fast Delivery' },
-  { icon: '💊', label: 'Prescription Support' },
-  { icon: '🎧', label: '24/7 Support' },
-];
-
 const WHY_CHOOSE_FEATURES = [
   { icon: '💊', title: 'Authentic Products', text: '100% genuine medicines from licensed suppliers' },
   { icon: '🚚', title: 'Fast Delivery', text: 'Quick and reliable delivery to your doorstep' },
@@ -289,20 +282,10 @@ const HomePage = () => {
           <p className="hero-subtitle">
             Get authentic medicines delivered to your doorstep. Trusted by thousands of customers.
           </p>
-          <div className="hero-cta-row">
-            <div className="hero-features">
-              {HERO_FEATURES.map((feature) => (
-                <div className="feature-item" key={feature.label}>
-                  <span className="feature-icon">{feature.icon}</span>
-                  <span>{feature.label}</span>
-                </div>
-              ))}
-            </div>
-            <div className="hero-buttons">
-              <Link to="/medicines">
-                <Button variant="primary" size="large">Browse Products</Button>
-              </Link>
-            </div>
+          <div className="hero-buttons">
+            <Link to="/medicines">
+              <Button variant="primary" size="large">Browse Products</Button>
+            </Link>
           </div>
         </div>
       </section>

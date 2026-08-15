@@ -4,6 +4,14 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
 import { useCart } from '../../context/CartContext';  // cart context — provides cart item count for badge display
 import './Header.css';
+
+const HEADER_FEATURES = [
+  { icon: '✓', label: 'Authentic Medicines' },
+  { icon: '🚚', label: 'Fast Delivery' },
+  { icon: '💊', label: 'Prescription Support' },
+  { icon: '🎧', label: '24/7 Support' },
+];
+
 /**
  * Header Component
  * Main navigation header shown on all public/customer pages
@@ -89,8 +97,17 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Main Navigation Bar */}
+      {/* Main Navigation Bar — sticky, so the features bar right above the
+          logo stays visible while scrolling too. */}
       <header className="main-header">
+        <div className="header-features-bar">
+          {HEADER_FEATURES.map((feature) => (
+            <span className="header-feature-item" key={feature.label}>
+              <span className="header-feature-icon">{feature.icon}</span>
+              <span>{feature.label}</span>
+            </span>
+          ))}
+        </div>
         <div className="container">
           <nav className="navbar">
             {/* Logo */}
