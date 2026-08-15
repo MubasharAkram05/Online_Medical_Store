@@ -21,7 +21,26 @@ import './MedicineCard.css';
  *
  * @param {object} medicine - Medicine data object containing all medicine details
  */
+/**
+ * getDisplayStats — derives a stable star rating and "sold" count from the
+ * medicine id, since the catalogue has no real ratings/sales data yet.
+ * Deterministic (same id always produces the same numbers) so cards don't
+ * flicker between renders, but these are display placeholders, not real
+ * review/sales figures.
+ */
+const getDisplayStats = (id) => {
+  const seed = Number(id) || 0;
+  const rating = (4 + ((seed * 37) % 10) / 10).toFixed(1);
+  const reviewCount = 20 + ((seed * 53) % 480);
+  const soldCount = 30 + ((seed * 91) % 2470);
+  const soldLabel = soldCount >= 1000 ? `${(soldCount / 1000).toFixed(1)}k` : soldCount;
+
+  return { rating, reviewCount, soldLabel };
+};
+
 const MedicineCard = ({ medicine }) => {
+
+  const { rating, reviewCount, soldLabel } = getDisplayStats(medicine.id);
 
   // get addToCart function from cart context
   // used to add medicine to cart when button is clicked
@@ -156,6 +175,14 @@ const MedicineCard = ({ medicine }) => {
             <span className="medicine-stock">
               Stock: {medicine.stock ?? 0}
             </span>
+          </div>
+
+          {/* rating and sold count — display placeholders, see getDisplayStats */}
+          <div className="medicine-rating-row">
+            <span className="medicine-rating">
+              ⭐ {rating} <span className="rating-count">({reviewCount})</span>
+            </span>
+            <span className="medicine-sold">{soldLabel} sold</span>
           </div>
 
           {/* Add to Cart button
