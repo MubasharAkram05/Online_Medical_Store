@@ -193,6 +193,13 @@ const WHY_CHOOSE_FEATURES = [
   { icon: '💰', title: 'Best Prices', text: 'Competitive prices on all healthcare products' },
 ];
 
+const HERO_BG_IMAGES = [
+  'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1200&h=800&fit=crop',
+  'https://images.unsplash.com/photo-1550572017-edd951b55104?w=1200&h=800&fit=crop',
+  'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=1200&h=800&fit=crop',
+  'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=1200&h=800&fit=crop',
+];
+
 const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -219,6 +226,15 @@ const HomePage = () => {
     };
 
     fetchFeaturedProducts();
+  }, []);
+
+  const [heroBgIndex, setHeroBgIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHeroBgIndex((i) => (i + 1) % HERO_BG_IMAGES.length);
+    }, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   const whyChooseFeatures = useMarqueeScroll(25);
@@ -255,6 +271,19 @@ const HomePage = () => {
     <div className="homepage">
       {/* Hero Section */}
       <section className="hero-section">
+        <div className="hero-bg">
+          <div
+            key={heroBgIndex}
+            className="hero-bg-image"
+            style={{ backgroundImage: `url(${HERO_BG_IMAGES[heroBgIndex]})` }}
+          />
+          <div className="hero-bg-overlay" />
+          <div className="hero-bg-dots">
+            {HERO_BG_IMAGES.map((_, i) => (
+              <span key={i} className={`hero-bg-dot ${i === heroBgIndex ? 'active' : ''}`} />
+            ))}
+          </div>
+        </div>
         <div className="hero-content">
           <h1 className="hero-title">Your Health, Our Priority</h1>
           <p className="hero-subtitle">

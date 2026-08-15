@@ -4,18 +4,6 @@
 }
 
 .hero-section {
-  /* A low-transparency (mostly opaque) color layer sits on top of a 2x2
-     collage of medicine photos so the hero text stays readable while the
-     images still show through. */
-  background-image:
-    linear-gradient(135deg, rgba(15, 139, 127, 0.88) 0%, rgba(26, 141, 135, 0.85) 50%, rgba(44, 62, 80, 0.9) 100%),
-    url('https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=700&h=700&fit=crop'),
-    url('https://images.unsplash.com/photo-1550572017-edd951b55104?w=700&h=700&fit=crop'),
-    url('https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=700&h=700&fit=crop'),
-    url('https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=700&h=700&fit=crop');
-  background-position: center, top left, top right, bottom left, bottom right;
-  background-size: cover, 50% 50%, 50% 50%, 50% 50%, 50% 50%;
-  background-repeat: no-repeat;
   color: white;
   padding: 2.5rem 3rem;
   border-radius: 24px;
@@ -25,9 +13,73 @@
   max-width: 1355px;
 }
 
+/* Background photo slideshow — cycles through 4 medicine/pharmacy photos,
+   sliding in from the right (RTL) every 4s. A very light color wash sits
+   on top only for text contrast; the photo itself stays the dominant
+   visual, not a heavy tint. */
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.hero-bg-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  animation: hero-bg-slide-in 0.9s ease;
+}
+
+@keyframes hero-bg-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-bg-image {
+    animation: none;
+  }
+}
+
+.hero-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(15, 139, 127, 0.22) 0%, rgba(26, 141, 135, 0.18) 50%, rgba(44, 62, 80, 0.24) 100%);
+}
+
+.hero-bg-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  z-index: 1;
+}
+
+.hero-bg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.hero-bg-dot.active {
+  background: #ffffff;
+  transform: scale(1.3);
+}
+
 .hero-content {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   text-align: center;
   max-width: 900px;
   margin: 0 auto;
@@ -40,6 +92,7 @@
   line-height: 1.2;
   color: var(--text-white);
   text-align: center;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
 .hero-subtitle {
@@ -49,6 +102,7 @@
   line-height: 1.5;
   font-weight: 400;
   text-align: center;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
 }
 
 .hero-buttons {
