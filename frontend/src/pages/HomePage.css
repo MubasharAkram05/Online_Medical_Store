@@ -4,11 +4,22 @@
 }
 
 .hero-section {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 50%, var(--secondary-color) 100%);
+  /* A low-transparency (mostly opaque) color layer sits on top of a 2x2
+     collage of medicine photos so the hero text stays readable while the
+     images still show through. */
+  background-image:
+    linear-gradient(135deg, rgba(15, 139, 127, 0.88) 0%, rgba(26, 141, 135, 0.85) 50%, rgba(44, 62, 80, 0.9) 100%),
+    url('https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=700&h=700&fit=crop'),
+    url('https://images.unsplash.com/photo-1550572017-edd951b55104?w=700&h=700&fit=crop'),
+    url('https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=700&h=700&fit=crop'),
+    url('https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=700&h=700&fit=crop');
+  background-position: center, top left, top right, bottom left, bottom right;
+  background-size: cover, 50% 50%, 50% 50%, 50% 50%, 50% 50%;
+  background-repeat: no-repeat;
   color: white;
-  padding: 4rem 3rem;
+  padding: 2.5rem 3rem;
   border-radius: 24px;
-  margin: 1.5rem auto 3rem;
+  margin: 1.5rem auto 2.5rem;
   position: relative;
   overflow: hidden;
   max-width: 1355px;
@@ -23,19 +34,19 @@
 }
 
 .hero-title {
-  font-size: 56px;
+  font-size: 48px;
   font-weight: 700;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   line-height: 1.2;
   color: var(--text-white);
   text-align: center;
 }
 
 .hero-subtitle {
-  font-size: 20px;
-  margin-bottom: 48px;
+  font-size: 18px;
+  margin-bottom: 28px;
   color: var(--text-white);
-  line-height: 1.6;
+  line-height: 1.5;
   font-weight: 400;
   text-align: center;
 }
@@ -44,7 +55,7 @@
   display: flex;
   gap: 20px;
   justify-content: center;
-  margin: 40px auto 50px;
+  margin: 24px auto 28px;
   flex-wrap: wrap;
   max-width: 480px;
 }
@@ -355,24 +366,24 @@
 /* Responsive */
 @media (max-width: 968px) {
   .hero-section {
-    margin: 0 10px 60px;
+    margin: 0 10px 40px;
     max-width: calc(100% - 20px);
-    padding: 80px 20px;
+    padding: 48px 20px;
   }
 }
 
 @media (max-width: 768px) {
   .hero-section {
-    padding: 60px 20px;
+    padding: 36px 20px;
     border-radius: 12px;
   }
 
   .hero-title {
-    font-size: 36px;
+    font-size: 32px;
   }
-  
+
   .hero-subtitle {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .hero-buttons {
