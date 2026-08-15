@@ -125,7 +125,6 @@ const HomePage = () => {
     fetchFeaturedProducts();
   }, []);
 
-  const heroFeatures = useMarqueeScroll(30);
   const whyChooseFeatures = useMarqueeScroll(25);
   const categories = useMarqueeScroll(20);
 
@@ -170,23 +169,12 @@ const HomePage = () => {
               <Button variant="primary" size="large">Browse Products</Button>
             </Link>
           </div>
-          <div
-            className="hero-features"
-            ref={heroFeatures.ref}
-            onMouseEnter={heroFeatures.pause}
-            onMouseLeave={heroFeatures.resume}
-            onTouchStart={heroFeatures.pause}
-            onTouchEnd={heroFeatures.resume}
-          >
-            {[0, 1].map((copy) => (
-              <React.Fragment key={copy}>
-                {HERO_FEATURES.map((feature) => (
-                  <div className="feature-item" key={`${copy}-${feature.label}`}>
-                    <span className="feature-icon">{feature.icon}</span>
-                    <span>{feature.label}</span>
-                  </div>
-                ))}
-              </React.Fragment>
+          <div className="hero-features">
+            {HERO_FEATURES.map((feature) => (
+              <div className="feature-item" key={feature.label}>
+                <span className="feature-icon">{feature.icon}</span>
+                <span>{feature.label}</span>
+              </div>
             ))}
           </div>
         </div>
