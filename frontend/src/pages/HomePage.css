@@ -121,19 +121,13 @@
 
 .hero-features {
   display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 16px;
   margin-top: 0;
   max-width: 900px;
   margin-left: auto;
   margin-right: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.hero-features::-webkit-scrollbar {
-  display: none;
 }
 
 .hero-features .feature-item {
@@ -421,7 +415,7 @@
   }
 
   .hero-features .feature-item {
-    flex: 0 0 70%;
+    flex: 0 0 calc(50% - 6px);
   }
 }
 
