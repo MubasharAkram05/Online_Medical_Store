@@ -67,7 +67,7 @@
    so it stays visible on scroll instead of scrolling away with the hero. */
 .header-features-bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
   gap: 8px;
   padding: 8px 16px 0;
