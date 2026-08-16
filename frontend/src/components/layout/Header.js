@@ -7,7 +7,6 @@ import './Header.css';
 
 const HEADER_FEATURES = [
   { icon: '✓', label: 'Authentic Medicines' },
-  { icon: '🚚', label: 'Fast Delivery' },
   { icon: '💊', label: 'Prescription Support' },
   { icon: '🎧', label: '24/7 Support' },
 ];
