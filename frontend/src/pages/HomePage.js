@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { medicineService } from '../services/medicineService';
 import Button from '../components/common/Button';
@@ -6,6 +6,70 @@ import Card from '../components/common/Card';
 import MedicineCard from '../components/medicine/MedicineCard';
 import { CATEGORIES } from '../utils/constants';
 import './HomePage.css';
+
+/**
+ * useMarqueeScroll — frame-by-frame right-to-left auto-scroll that never
+ * pauses (unlike interval-based scrolling, which visibly steps and stops
+ * between jumps). The row's content must be rendered twice back-to-back
+ * (see the `[0, 1].map(...)` usage below); once scrollLeft passes the
+ * midpoint (end of the first copy) it wraps back by exactly that width,
+ * which is invisible since the second copy is identical to the first.
+ * Pauses on hover/touch and respects prefers-reduced-motion.
+ */
+const useMarqueeScroll = (speedPxPerSec = 40) => {
+  const ref = useRef(null);
+  const pausedRef = useRef(false);
+  // Tracked separately from el.scrollLeft, which the browser rounds to a
+  // whole pixel on every write — reading it back to compute the next step
+  // would silently drop any sub-pixel-per-frame speed (it always rounds
+  // back down to the same integer, so the row never appears to move).
+  const positionRef = useRef(null);
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return undefined;
+
+    let rafId;
+    let lastTs = null;
+
+    const step = (ts) => {
+      const el = ref.current;
+      if (el) {
+        if (lastTs === null) lastTs = ts;
+        const dt = ts - lastTs;
+        lastTs = ts;
+
+        if (!pausedRef.current) {
+          const halfWidth = el.scrollWidth / 2;
+          if (halfWidth > el.clientWidth) {
+            if (positionRef.current === null) positionRef.current = el.scrollLeft;
+            let next = positionRef.current + (speedPxPerSec * dt) / 1000;
+            if (next >= halfWidth) next -= halfWidth;
+            if (next < 0) next += halfWidth;
+            positionRef.current = next;
+            el.scrollLeft = next;
+          }
+        }
+      } else {
+        lastTs = null;
+        positionRef.current = null;
+      }
+      rafId = requestAnimationFrame(step);
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [speedPxPerSec]);
+
+  const pause = () => { pausedRef.current = true; };
+  // Dropping positionRef back to null makes the loop re-sync from the
+  // real el.scrollLeft on the next frame, instead of resuming from a
+  // stale value — otherwise a manual touch/drag scroll during the pause
+  // gets silently overwritten the instant auto-scroll resumes.
+  const resume = () => { pausedRef.current = false; positionRef.current = null; };
+
+  return { ref, pause, resume };
+};
 
 const WHY_CHOOSE_FEATURES = [
   { icon: '💊', title: 'Authentic Products', text: '100% genuine medicines from licensed suppliers' },
@@ -57,6 +121,8 @@ const HomePage = () => {
     }, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  const whyChooseFeatures = useMarqueeScroll(25);
 
   const getCategoryEmoji = (categoryName) => {
     switch (categoryName) {
@@ -163,13 +229,24 @@ const HomePage = () => {
           <div className="section-header">
             <h2 className="section-title">Why Choose Us?</h2>
           </div>
-          <div className="features-grid">
-            {WHY_CHOOSE_FEATURES.map((feature) => (
-              <Card className="feature-card" key={feature.title}>
-                <div className="feature-icon-large">{feature.icon}</div>
-                <h3 className="feature-title">{feature.title}</h3>
-                <p className="feature-text">{feature.text}</p>
-              </Card>
+          <div
+            className="features-grid"
+            ref={whyChooseFeatures.ref}
+            onMouseEnter={whyChooseFeatures.pause}
+            onMouseLeave={whyChooseFeatures.resume}
+            onTouchStart={whyChooseFeatures.pause}
+            onTouchEnd={whyChooseFeatures.resume}
+          >
+            {[0, 1].map((copy) => (
+              <React.Fragment key={copy}>
+                {WHY_CHOOSE_FEATURES.map((feature) => (
+                  <Card className="feature-card" key={`${copy}-${feature.title}`}>
+                    <div className="feature-icon-large">{feature.icon}</div>
+                    <h3 className="feature-title">{feature.title}</h3>
+                    <p className="feature-text">{feature.text}</p>
+                  </Card>
+                ))}
+              </React.Fragment>
             ))}
           </div>
         </div>
