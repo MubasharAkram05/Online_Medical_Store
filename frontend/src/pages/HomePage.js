@@ -163,6 +163,74 @@ const useBurstAutoScroll = (speedPxPerSec, cardsPerBurst, burstPauseMs, endPause
   return { ref, pause, resume, nudge };
 };
 
+/**
+ * CategoryProductRow — fetches up to 5 products for one category and shows
+ * them as its own auto-scrolling (RTL, never-pausing) row, with a "See
+ * More" link to that category's full listing. Renders nothing while a
+ * category turns out to have no products, rather than showing an empty row.
+ */
+const CategoryProductRow = ({ category }) => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const scroller = useMarqueeScroll(25);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchCategoryProducts = async () => {
+      try {
+        const response = await medicineService.getByCategory(category.name);
+        const data = response.data.medicines || response.data || [];
+        if (!cancelled) setProducts(data.slice(0, 5));
+      } catch (error) {
+        if (!cancelled) setProducts([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchCategoryProducts();
+    return () => { cancelled = true; };
+  }, [category.name]);
+
+  if (!loading && products.length === 0) return null;
+
+  return (
+    <section className="category-products-section">
+      <div className="container">
+        <div className="section-header">
+          <h2 className="section-title">{category.name}</h2>
+          <Link to={`/medicines?category=${encodeURIComponent(category.name)}`} className="see-more-link">
+            See More →
+          </Link>
+        </div>
+        {loading ? (
+          <div className="loading">Loading {category.name}...</div>
+        ) : (
+          <div
+            className="category-products-grid"
+            ref={scroller.ref}
+            onMouseEnter={scroller.pause}
+            onMouseLeave={scroller.resume}
+            onTouchStart={scroller.pause}
+            onTouchEnd={scroller.resume}
+          >
+            {[0, 1].map((copy) => (
+              <React.Fragment key={copy}>
+                {products.map((product) => (
+                  <div className="category-product-item" key={`${copy}-${product.id}`}>
+                    <MedicineCard medicine={product} />
+                  </div>
+                ))}
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
 const WHY_CHOOSE_FEATURES = [
   { icon: '💊', title: 'Authentic Products', text: '100% genuine medicines from licensed suppliers' },
   { icon: '🚚', title: 'Fast Delivery', text: 'Quick and reliable delivery to your doorstep' },
@@ -324,6 +392,12 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* Per-category product rows — one auto-scrolling row per category,
+          each with its own "See More" link. */}
+      {CATEGORIES.map((category) => (
+        <CategoryProductRow key={category.id} category={category} />
+      ))}
 
       {/* Featured Products Section */}
       <section className="featured-section">
