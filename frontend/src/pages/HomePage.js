@@ -71,6 +71,98 @@ const useMarqueeScroll = (speedPxPerSec = 40) => {
   return { ref, pause, resume };
 };
 
+/**
+ * useBurstAutoScroll — like useMarqueeScroll, but automatically pauses for
+ * `burstPauseMs` after every `cardsPerBurst` cards' worth of distance has
+ * scrolled by, then resumes. An arrow-button nudge (via `nudge`) pauses for
+ * its own given duration instead, overriding any burst pause in progress.
+ * When a full pass through the row completes, it snaps back to the very
+ * first card and pauses for `endPauseMs` — a longer, distinct stop so it
+ * reads as "this category set just finished and is starting over", not
+ * just another burst pause.
+ */
+const useBurstAutoScroll = (speedPxPerSec, cardsPerBurst, burstPauseMs, endPauseMs) => {
+  const ref = useRef(null);
+  const hoverPausedRef = useRef(false);
+  const pausedUntilRef = useRef(0);
+  const positionRef = useRef(null);
+  const distanceRef = useRef(0);
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return undefined;
+
+    let rafId;
+    let lastTs = null;
+
+    const step = (ts) => {
+      const el = ref.current;
+      if (el) {
+        if (lastTs === null) lastTs = ts;
+        const dt = ts - lastTs;
+        lastTs = ts;
+
+        if (!hoverPausedRef.current && ts >= pausedUntilRef.current) {
+          const halfWidth = el.scrollWidth / 2;
+          if (halfWidth > el.clientWidth) {
+            if (positionRef.current === null) positionRef.current = el.scrollLeft;
+            const delta = (speedPxPerSec * dt) / 1000;
+            let next = positionRef.current + delta;
+
+            if (next >= halfWidth) {
+              // Full pass complete — stop dead at the first card instead
+              // of wrapping mid-scroll, then hold before restarting.
+              next = 0;
+              distanceRef.current = 0;
+              pausedUntilRef.current = ts + endPauseMs;
+            } else {
+              const card = el.firstElementChild;
+              const cardStep = card ? card.getBoundingClientRect().width + 16 : el.clientWidth * 0.5;
+              distanceRef.current += delta;
+              if (distanceRef.current >= cardStep * cardsPerBurst) {
+                distanceRef.current = 0;
+                pausedUntilRef.current = ts + burstPauseMs;
+              }
+            }
+
+            if (next < 0) next += halfWidth;
+            positionRef.current = next;
+            el.scrollLeft = next;
+          }
+        }
+      } else {
+        lastTs = null;
+        positionRef.current = null;
+      }
+      rafId = requestAnimationFrame(step);
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [speedPxPerSec, cardsPerBurst, burstPauseMs, endPauseMs]);
+
+  const pause = () => { hoverPausedRef.current = true; };
+  // Re-sync from the real scroll position on resume (see useMarqueeScroll's
+  // resume for why) so a manual touch/drag during the pause isn't undone.
+  const resume = () => { hoverPausedRef.current = false; positionRef.current = null; };
+  const nudge = (deltaPx, pauseMs) => {
+    const el = ref.current;
+    if (!el) return;
+    const halfWidth = el.scrollWidth / 2;
+    let base = positionRef.current === null ? el.scrollLeft : positionRef.current;
+    let next = base + deltaPx;
+    if (halfWidth > 0) {
+      next = ((next % halfWidth) + halfWidth) % halfWidth;
+    }
+    positionRef.current = next;
+    el.scrollLeft = next;
+    distanceRef.current = 0;
+    if (pauseMs) pausedUntilRef.current = performance.now() + pauseMs;
+  };
+
+  return { ref, pause, resume, nudge };
+};
+
 const WHY_CHOOSE_FEATURES = [
   { icon: '💊', title: 'Authentic Products', text: '100% genuine medicines from licensed suppliers' },
   { icon: '🚚', title: 'Fast Delivery', text: 'Quick and reliable delivery to your doorstep' },
@@ -123,6 +215,15 @@ const HomePage = () => {
   }, []);
 
   const whyChooseFeatures = useMarqueeScroll(25);
+  const categories = useBurstAutoScroll(20, 1, 3000, 3000);
+
+  const scrollCategories = (direction) => {
+    const el = categories.ref.current;
+    if (!el) return;
+    const card = el.firstElementChild;
+    const step = card ? card.getBoundingClientRect().width + 16 : el.clientWidth * 0.5;
+    categories.nudge(direction * step, 5000);
+  };
 
   const getCategoryEmoji = (categoryName) => {
     switch (categoryName) {
@@ -180,17 +281,46 @@ const HomePage = () => {
             <h2 className="section-title">Shop by Category</h2>
             <p className="section-subtitle">Browse our wide range of healthcare products</p>
           </div>
-          <div className="categories-grid">
-            {CATEGORIES.map((category) => (
-              <Link key={category.id} to={`/medicines?category=${encodeURIComponent(category.name)}`}>
-                <Card className="category-card">
-                  <span className="category-emoji">{getCategoryEmoji(category.name)}</span>
-                  <div className="category-card-content">
-                    <h3 className="category-name">{category.name}</h3>
-                  </div>
-                </Card>
-              </Link>
-            ))}
+          <div className="categories-carousel">
+            <button
+              type="button"
+              className="carousel-arrow carousel-arrow-left"
+              onClick={() => scrollCategories(-1)}
+              aria-label="Previous category"
+            >
+              ‹
+            </button>
+            <div
+              className="categories-grid"
+              ref={categories.ref}
+              onMouseEnter={categories.pause}
+              onMouseLeave={categories.resume}
+              onTouchStart={categories.pause}
+              onTouchEnd={categories.resume}
+            >
+              {[0, 1].map((copy) => (
+                <React.Fragment key={copy}>
+                  {CATEGORIES.map((category) => (
+                    <Link key={`${copy}-${category.id}`} to={`/medicines?category=${encodeURIComponent(category.name)}`}>
+                      <Card className="category-card">
+                        <span className="category-emoji">{getCategoryEmoji(category.name)}</span>
+                        <div className="category-card-content">
+                          <h3 className="category-name">{category.name}</h3>
+                        </div>
+                      </Card>
+                    </Link>
+                  ))}
+                </React.Fragment>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="carousel-arrow carousel-arrow-right"
+              onClick={() => scrollCategories(1)}
+              aria-label="Next category"
+            >
+              ›
+            </button>
           </div>
         </div>
       </section>
