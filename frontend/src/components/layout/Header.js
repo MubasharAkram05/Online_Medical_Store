@@ -90,23 +90,20 @@ const Header = () => {
                 <span className="promo-text">
                   <i className="icon">🚚</i> Free Delivery on orders over Rs. 5000
                 </span>
+                {HEADER_FEATURES.map((feature) => (
+                  <span className="contact-info" key={feature.label}>
+                    <i className="icon">{feature.icon}</i>
+                    {feature.label}
+                  </span>
+                ))}
               </React.Fragment>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Main Navigation Bar — sticky, so the features bar right above the
-          logo stays visible while scrolling too. */}
+      {/* Main Navigation Bar — sticky */}
       <header className="main-header">
-        <div className="header-features-bar">
-          {HEADER_FEATURES.map((feature) => (
-            <span className="header-feature-item" key={feature.label}>
-              <span className="header-feature-icon">{feature.icon}</span>
-              <span>{feature.label}</span>
-            </span>
-          ))}
-        </div>
         <div className="container">
           <nav className="navbar">
             {/* Logo */}
