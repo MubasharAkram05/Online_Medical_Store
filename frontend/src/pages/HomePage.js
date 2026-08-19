@@ -242,7 +242,7 @@ const CategoryProductRow = ({ category }) => {
                     .slice(pageIndex * CATEGORY_ROW_PAGE_SIZE, pageIndex * CATEGORY_ROW_PAGE_SIZE + CATEGORY_ROW_PAGE_SIZE)
                     .map((product) => (
                       <div className="category-product-item" key={product.id}>
-                        <MedicineCard medicine={product} />
+                        <MedicineCard medicine={product} compact />
                       </div>
                     ))}
                 </div>
