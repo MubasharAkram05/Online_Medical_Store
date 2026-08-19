@@ -163,16 +163,21 @@ const useBurstAutoScroll = (speedPxPerSec, cardsPerBurst, burstPauseMs, endPause
   return { ref, pause, resume, nudge };
 };
 
+const CATEGORY_ROW_PAGE_SIZE = 3;
+
 /**
  * CategoryProductRow — fetches up to 5 products for one category and shows
- * them as its own auto-scrolling (RTL, never-pausing) row, with a "See
- * More" link to that category's full listing. Renders nothing while a
- * category turns out to have no products, rather than showing an empty row.
+ * them as a paginated RTL "swap" carousel: 3 products at a time, holding
+ * still, then swapping (sliding) to the next 3 and wrapping back to the
+ * start — not a continuously-creeping scroll. Includes a "See More" link
+ * to that category's full listing. Renders nothing when a category turns
+ * out to have no products, rather than showing an empty row.
  */
 const CategoryProductRow = ({ category }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const scroller = useMarqueeScroll(25);
+  const [page, setPage] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -193,6 +198,19 @@ const CategoryProductRow = ({ category }) => {
     return () => { cancelled = true; };
   }, [category.name]);
 
+  const pageCount = Math.max(1, Math.ceil(products.length / CATEGORY_ROW_PAGE_SIZE));
+
+  useEffect(() => {
+    if (pageCount <= 1 || paused) return undefined;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return undefined;
+
+    const interval = setInterval(() => {
+      setPage((p) => (p + 1) % pageCount);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [pageCount, paused]);
+
   if (!loading && products.length === 0) return null;
 
   return (
@@ -208,22 +226,28 @@ const CategoryProductRow = ({ category }) => {
           <div className="loading">Loading {category.name}...</div>
         ) : (
           <div
-            className="category-products-grid"
-            ref={scroller.ref}
-            onMouseEnter={scroller.pause}
-            onMouseLeave={scroller.resume}
-            onTouchStart={scroller.pause}
-            onTouchEnd={scroller.resume}
+            className="category-products-viewport"
+            onMouseEnter={() => setPaused(true)}
+            onMouseLeave={() => setPaused(false)}
+            onTouchStart={() => setPaused(true)}
+            onTouchEnd={() => setPaused(false)}
           >
-            {[0, 1].map((copy) => (
-              <React.Fragment key={copy}>
-                {products.map((product) => (
-                  <div className="category-product-item" key={`${copy}-${product.id}`}>
-                    <MedicineCard medicine={product} />
-                  </div>
-                ))}
-              </React.Fragment>
-            ))}
+            <div
+              className="category-products-track"
+              style={{ transform: `translateX(-${page * 100}%)` }}
+            >
+              {Array.from({ length: pageCount }).map((_, pageIndex) => (
+                <div className="category-products-page" key={pageIndex}>
+                  {products
+                    .slice(pageIndex * CATEGORY_ROW_PAGE_SIZE, pageIndex * CATEGORY_ROW_PAGE_SIZE + CATEGORY_ROW_PAGE_SIZE)
+                    .map((product) => (
+                      <div className="category-product-item" key={product.id}>
+                        <MedicineCard medicine={product} />
+                      </div>
+                    ))}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
