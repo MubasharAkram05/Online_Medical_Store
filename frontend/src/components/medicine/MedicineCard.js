@@ -20,6 +20,8 @@ import './MedicineCard.css';
  * Clicking "Add to Cart" → adds medicine to cart
  *
  * @param {object} medicine - Medicine data object containing all medicine details
+ * @param {boolean} compact - When true, hides stock, rating/sold, and the
+ *   Add to Cart button — used for the condensed homepage category rows.
  */
 /**
  * getDisplayStats — derives a stable star rating and "sold" count from the
@@ -38,7 +40,7 @@ const getDisplayStats = (id) => {
   return { rating, reviewCount, soldLabel };
 };
 
-const MedicineCard = ({ medicine }) => {
+const MedicineCard = ({ medicine, compact = false }) => {
 
   const { rating, reviewCount, soldLabel } = getDisplayStats(medicine.id);
 
@@ -172,30 +174,36 @@ const MedicineCard = ({ medicine }) => {
             </span>
 
             {/* stock count — ?? 0 means show 0 if stock is null/undefined */}
-            <span className="medicine-stock">
-              Stock: {medicine.stock ?? 0}
-            </span>
+            {!compact && (
+              <span className="medicine-stock">
+                Stock: {medicine.stock ?? 0}
+              </span>
+            )}
           </div>
 
-          {/* rating and sold count — display placeholders, see getDisplayStats */}
-          <div className="medicine-rating-row">
-            <span className="medicine-rating">
-              ⭐ {rating} <span className="rating-count">({reviewCount})</span>
-            </span>
-            <span className="medicine-sold">{soldLabel} sold</span>
-          </div>
+          {!compact && (
+            <>
+              {/* rating and sold count — display placeholders, see getDisplayStats */}
+              <div className="medicine-rating-row">
+                <span className="medicine-rating">
+                  ⭐ {rating} <span className="rating-count">({reviewCount})</span>
+                </span>
+                <span className="medicine-sold">{soldLabel} sold</span>
+              </div>
 
-          {/* Add to Cart button
-              onClick calls handleAddToCart
-              e.preventDefault inside stops Link navigation */}
-          <Button
-            variant="primary"
-            size="small"
-            className="add-to-cart-btn"
-            onClick={handleAddToCart}
-          >
-            Add to Cart
-          </Button>
+              {/* Add to Cart button
+                  onClick calls handleAddToCart
+                  e.preventDefault inside stops Link navigation */}
+              <Button
+                variant="primary"
+                size="small"
+                className="add-to-cart-btn"
+                onClick={handleAddToCart}
+              >
+                Add to Cart
+              </Button>
+            </>
+          )}
 
         </div>
       </div>
