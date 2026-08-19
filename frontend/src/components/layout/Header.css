@@ -63,51 +63,6 @@
   z-index: 1000;
 }
 
-/* Feature pills bar — sits above the logo, inside the sticky main-header,
-   so it stays visible on scroll instead of scrolling away with the hero. */
-.header-features-bar {
-  display: flex;
-  flex-wrap: nowrap;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 16px 0;
-}
-
-.header-feature-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  background: #66BB6A;
-  border-radius: 999px;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.header-feature-icon {
-  display: inline-flex;
-  font-size: 13px;
-  line-height: 1;
-}
-
-@media (max-width: 640px) {
-  .header-features-bar {
-    gap: 6px;
-    padding: 6px 10px 0;
-  }
-
-  .header-feature-item {
-    padding: 4px 9px;
-    font-size: 10px;
-  }
-
-  .header-feature-icon {
-    font-size: 11px;
-  }
-}
-
 .navbar {
   display: grid;
   grid-template-columns: auto minmax(280px, 520px) auto;
