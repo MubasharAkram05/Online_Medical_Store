@@ -40,7 +40,12 @@ const seedMedicines = async () => {
     // Execute the SQL statement directly
     try {
       const result = await connection.query(cleanedSQL);
-      const totalRows = result.rowCount || 0;
+      // The seed file runs several statements in one query, so node-postgres
+      // hands back an array of results rather than a single one — sum the
+      // row counts instead of reading .rowCount off the array (always
+      // undefined, which used to report "inserted 0" even on a good run).
+      const results = Array.isArray(result) ? result : [result];
+      const totalRows = results.reduce((sum, r) => sum + (r?.rowCount || 0), 0);
       console.log(`✅ Successfully inserted ${totalRows} medicine record(s)`);
     } catch (error) {
       // If duplicate entry error, the table might already have some data

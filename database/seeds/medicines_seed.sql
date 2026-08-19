@@ -2,14 +2,23 @@
 -- Run this after creating the schema:
 --   psql "$DATABASE_URL" -f database/schema.sql
 --   psql "$DATABASE_URL" -f database/seeds/medicines_seed.sql
+--
+-- Safe to run more than once: each product is only inserted when no
+-- medicine with the same name already exists, so re-running this file
+-- tops up a partially seeded database instead of creating duplicates.
 
--- Add manufacturing_date column if it does not already exist (safe to run on existing databases)
+-- Add columns if they do not already exist (safe to run on existing databases)
 ALTER TABLE medicines ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(150);
 ALTER TABLE medicines ADD COLUMN IF NOT EXISTS manufacturing_date DATE NULL DEFAULT NULL;
 
 INSERT INTO medicines
   (name, description, price, stock, requires_prescription, image_url, manufacturer, category, expiry_date, manufacturing_date, dosage_instructions, side_effects, sort_order)
-VALUES
+SELECT
+  v.name, v.description, v.price, v.stock, v.requires_prescription,
+  v.image_url, v.manufacturer, v.category,
+  v.expiry_date::date, v.manufacturing_date::date,
+  v.dosage_instructions, v.side_effects, v.sort_order
+FROM (VALUES
   -- Medicines
   ('Paracetamol 500mg', 'Relieves pain and lowers your body temperature', 25.00, 120, false, 'https://images.unsplash.com/photo-1550572017-edd951b55104?w=500&h=400&fit=crop', 'Abbott', 'Medicines', '2026-06-15', '2024-06-15', NULL, NULL, 1),
   ('Antibiotic Amoxicillin', 'Treats bacterial infections', 150.00, 60, true, 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=500&h=400&fit=crop', 'GSK', 'Medicines', '2026-08-10', '2024-08-10', NULL, NULL, 2),
@@ -167,4 +176,8 @@ VALUES
   ('Tourniquet', 'Emergency bleeding control tourniquet', 450.00, 40, false, 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=500&h=400&fit=crop', 'Nexcare', 'First Aid', '2031-01-01', '2025-01-01', NULL, NULL, 0),
   ('Sting Relief Spray', 'Relieves insect bite discomfort', 200.00, 75, false, 'https://images.unsplash.com/photo-1583947581924-860bda48512b?w=500&h=400&fit=crop', 'Dettol', 'First Aid', '2027-04-01', '2025-04-01', NULL, NULL, 0),
   ('Blister Plasters', 'Cushioned blister relief plasters', 150.00, 100, false, 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&h=400&fit=crop', 'Nexcare', 'First Aid', '2030-01-01', '2025-01-01', NULL, NULL, 0),
-  ('Iodine Solution', 'Antiseptic wound solution', 130.00, 110, false, 'https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=500&h=400&fit=crop', 'Pyodine', 'First Aid', '2027-03-01', '2025-03-01', NULL, NULL, 0);
+  ('Iodine Solution', 'Antiseptic wound solution', 130.00, 110, false, 'https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=500&h=400&fit=crop', 'Pyodine', 'First Aid', '2027-03-01', '2025-03-01', NULL, NULL, 0)
+) AS v(name, description, price, stock, requires_prescription, image_url, manufacturer, category, expiry_date, manufacturing_date, dosage_instructions, side_effects, sort_order)
+WHERE NOT EXISTS (
+  SELECT 1 FROM medicines m WHERE m.name = v.name
+);
