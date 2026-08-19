@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "check-medicines": "node check-medicines.js",
     "seed-medicines": "node seed-medicines.js",
+    "seed-medicines-more": "node seed-medicines-more.js",
     "setup-db": "node setup-database.js"
   },
   "dependencies": {

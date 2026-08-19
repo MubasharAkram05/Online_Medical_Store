@@ -100,6 +100,7 @@ npm start
 - `npm run dev` - start backend in development mode
 - `npm start` - start backend in production mode
 - `npm run seed-medicines` - seed medicines
+- `npm run seed-medicines-more` - seed 20 additional medicines per category (run after `seed-medicines`)
 - `npm run setup-db` - setup database
 
 ### Frontend (`frontend/package.json`)
