@@ -118,7 +118,7 @@ const MedicineCard = ({ medicine, compact = false }) => {
       className="medicine-card-link"
       onClick={handleCardClick}
     >
-      <div className="medicine-card">
+      <div className={`medicine-card ${compact ? 'medicine-card-compact' : ''}`}>
 
         {/* medicine image section */}
         <div className="medicine-image">
