@@ -30,6 +30,11 @@ import './MedicineCard.css';
  * flicker between renders, but these are display placeholders, not real
  * review/sales figures.
  */
+const formatPrice = (price) => {
+  const num = Number(price) || 0;
+  return num % 1 === 0 ? num.toFixed(0) : num.toFixed(2);
+};
+
 const getDisplayStats = (id) => {
   const seed = Number(id) || 0;
   const rating = (4 + ((seed * 37) % 10) / 10).toFixed(1);
@@ -170,7 +175,7 @@ const MedicineCard = ({ medicine, compact = false }) => {
                 example: 50 → "50.00", 49.9 → "49.90"
                 ?. optional chaining — handles if price is null */}
             <span className="medicine-price">
-              PKR {medicine.price?.toFixed(2) || '0.00'}
+              PKR {formatPrice(medicine.price)}
             </span>
 
             {/* stock count — ?? 0 means show 0 if stock is null/undefined */}
